@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sqlite3
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -19,6 +21,30 @@ class Base(DeclarativeBase):
 
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
+
+
+def _ensure_product_columns() -> None:
+    """Lightweight SQLite migration for existing local DB files."""
+    expected_columns = {
+        "internal_reference": "TEXT",
+        "brand": "TEXT",
+        "stock_max": "INTEGER DEFAULT 0",
+        "image_path": "TEXT",
+        "promotion_eligible": "BOOLEAN DEFAULT 1",
+    }
+
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        existing_tables = {row[0] for row in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "products" not in existing_tables:
+            return
+
+        existing_cols = {row[1] for row in cursor.execute("PRAGMA table_info(products)")}
+        for col_name, col_type in expected_columns.items():
+            if col_name not in existing_cols:
+                cursor.execute(f"ALTER TABLE products ADD COLUMN {col_name} {col_type}")
+
+        conn.commit()
 
 
 def _ensure_default_admin() -> None:
@@ -58,4 +84,5 @@ def init_db() -> None:
 
     _ = (category, product, promotion, sale, sale_item, stock_movement, supplier, user)
     Base.metadata.create_all(bind=engine)
+    _ensure_product_columns()
     _ensure_default_admin()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import traceback
+
 from PyQt6.QtWidgets import (
     QFormLayout,
     QLineEdit,
@@ -41,20 +43,30 @@ class LoginWindow(QWidget):
         self._dashboard = None
 
     def _on_login(self) -> None:
-        with SessionLocal() as session:
-            service = UserService(UserRepository(session))
-            user = service.authenticate(self.username_input.text().strip(), self.password_input.text())
+        try:
+            with SessionLocal() as session:
+                service = UserService(UserRepository(session))
+                user = service.authenticate(self.username_input.text().strip(), self.password_input.text())
 
-            if not user:
-                QMessageBox.warning(self, "Erreur", "Identifiants invalides")
-                return
+                if not user:
+                    QMessageBox.warning(self, "Erreur", "Identifiants invalides")
+                    return
 
-            if user.role == UserRole.ADMIN:
-                self._dashboard = AdminDashboard(user)
-            elif user.role == UserRole.SUPERVISOR:
-                self._dashboard = SupervisorDashboard(user)
-            else:
-                self._dashboard = CashierDashboard(user)
+                if user.role == UserRole.ADMIN:
+                    self._dashboard = AdminDashboard(user)
+                elif user.role == UserRole.SUPERVISOR:
+                    self._dashboard = SupervisorDashboard(user)
+                else:
+                    self._dashboard = CashierDashboard(user)
 
-            self._dashboard.show()
-            self.close()
+                self._dashboard.show()
+                self.close()
+        except Exception as exc:  # pragma: no cover - UI guard
+            traceback.print_exc()
+            QMessageBox.critical(
+                self,
+                "Erreur critique",
+                "Impossible d'ouvrir le dashboard.\n"
+                f"Détail: {exc}\n"
+                "Vérifiez la version Python (3.12 recommandée) et la base locale.",
+            )

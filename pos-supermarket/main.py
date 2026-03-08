@@ -2,16 +2,20 @@ from __future__ import annotations
 
 import sys
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication
-
 from core.app_config import APP_NAME, BASE_DIR
 from core.database import init_db
-from ui.login.login_window import LoginWindow
-from ui.splash.splash_screen import SplashScreen
+from core.runtime_checks import ensure_supported_python
 
 
 def main() -> int:
+    ensure_supported_python()
+
+    from PyQt6.QtCore import QTimer
+    from PyQt6.QtWidgets import QApplication
+
+    from ui.login.login_window import LoginWindow
+    from ui.splash.splash_screen import SplashScreen
+
     init_db()
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
@@ -35,4 +39,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except RuntimeError as exc:
+        print(f"[ERREUR LANCEMENT] {exc}")
+        raise SystemExit(1)

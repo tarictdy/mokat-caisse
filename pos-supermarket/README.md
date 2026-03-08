@@ -165,6 +165,30 @@ Install-Module PSReadLine -MinimumVersion 2.0.3 -Scope CurrentUser -Force
 
 La base est créée automatiquement dans `data/pos_database.db`.
 
+### 6) Crash Windows `exit code -1073740791 (0xC0000409)` après connexion
+
+Cause probable:
+- Python 3.14 non compatible avec ce build PyQt6 (le chemin `Python314` est un indicateur fort),
+- ou base SQLite locale ancienne avec schéma incomplet.
+
+Correctifs appliqués dans le projet:
+- blocage explicite des versions Python >= 3.13 au démarrage,
+- migration automatique des nouvelles colonnes `products` lors de `init_db()`,
+- garde d'erreur au login avec message clair au lieu d'un crash silencieux.
+
+Action recommandée:
+1. Installer Python 3.12
+2. Recréer le venv
+3. Relancer:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python main.py
+```
+
+
 ## Sécurité
 
 - Hash de mot de passe via `bcrypt`

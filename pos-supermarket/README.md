@@ -31,6 +31,17 @@ Vous pouvez personnaliser ces valeurs via des variables d'environnement avant la
 - `POS_DEFAULT_ADMIN_PRENOM`
 - `POS_DEFAULT_ADMIN_EMPLOYEE_CODE`
 
+## Dashboard Admin (fonctionnel)
+
+Le dashboard admin inclut désormais:
+
+- Menu latéral: Dashboard, Produits, Promotions, Utilisateurs, Stock, Rapports, Paramètres
+- Cartes statistiques en temps réel: total produits, produits en rupture/stock min, promotions actives, ventes du jour
+- Recherche rapide produit (nom/code-barres) avec tableau de résultats
+- Notifications système
+- Activité récente (produits/promotions/utilisateurs créés)
+- Actions rapides: ajouter produit, créer promotion, créer utilisateur
+
 ## Installation dans PyCharm (recommandé)
 
 1. Ouvrir le dossier `pos-supermarket` dans PyCharm.

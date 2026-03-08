@@ -17,3 +17,7 @@ class UserRepository:
         self.session.add(user)
         self.session.flush()
         return user
+
+    def latest_created(self, limit: int = 10) -> list[User]:
+        stmt = select(User).order_by(User.created_at.desc()).limit(limit)
+        return list(self.session.execute(stmt).scalars().all())

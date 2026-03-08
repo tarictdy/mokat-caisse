@@ -1,0 +1,4 @@
+PyQt6>=6.7
+SQLAlchemy>=2.0
+bcrypt>=4.1
+qfluentwidgets>=1.5

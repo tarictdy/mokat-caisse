@@ -41,6 +41,9 @@ Le dashboard admin inclut désormais:
 - Notifications système
 - Activité récente (produits/promotions/utilisateurs créés)
 - Actions rapides: ajouter produit, créer promotion, créer utilisateur
+- Module Produits: suppression produit, activation/désactivation
+- Module Stock: renouvellement stock, mise à jour stock exact, alertes rupture
+- Formulaire produit complet: nom, code-barres, référence interne, catégorie, marque, prix achat/vente, TVA, stock min/max, unité, expiration, fournisseur, image, éligibilité promotion
 
 ## Installation dans PyCharm (recommandé)
 

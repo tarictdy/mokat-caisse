@@ -44,6 +44,9 @@ Le dashboard admin inclut désormais:
 - Module Produits: suppression produit, activation/désactivation
 - Module Stock: renouvellement stock, mise à jour stock exact, alertes rupture
 - Formulaire produit complet: nom, code-barres, référence interne, catégorie, marque, prix achat/vente, TVA, stock min/max, unité, expiration, fournisseur, image, éligibilité promotion
+- Thème visuel moderne (QSS): boutons arrondis, couleurs pro, tableaux stylisés, menu latéral icônes
+- Splash screen animé au démarrage avec message: "Bienvenue sur MOKAT MARKET POS" + "POWERED BY SOCAFTDYINDUSTRUAP"
+- Historique des mouvements de stock (entrée/sortie/ajustement/inventaire) avec date, raison et utilisateur
 
 ## Installation dans PyCharm (recommandé)
 

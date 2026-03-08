@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QStackedWidget,
+    QStyle,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -33,6 +34,7 @@ from PyQt6.QtWidgets import (
 from core.database import SessionLocal
 from models.product import Product, ProductStatus
 from models.promotion import Promotion, PromotionType
+from models.stock_movement import StockMovement, StockMovementType
 from models.user import User, UserRole
 from repositories.product_repo import ProductRepository
 from repositories.promotion_repo import PromotionRepository
@@ -55,7 +57,7 @@ class ProductCreateDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Ajouter produit")
         self.setModal(True)
-        self.resize(500, 560)
+        self.resize(520, 620)
 
         self.barcode_input = QLineEdit()
         self.reference_input = QLineEdit()
@@ -67,24 +69,15 @@ class ProductCreateDialog(QDialog):
         self.sale_price_input = QLineEdit()
         self.tax_rate_input = QLineEdit("0")
 
-        self.stock_input = QSpinBox()
-        self.stock_input.setRange(0, 1_000_000)
-        self.stock_min_input = QSpinBox()
-        self.stock_min_input.setRange(0, 1_000_000)
-        self.stock_max_input = QSpinBox()
-        self.stock_max_input.setRange(0, 1_000_000)
+        self.stock_input = QSpinBox(); self.stock_input.setRange(0, 1_000_000)
+        self.stock_min_input = QSpinBox(); self.stock_min_input.setRange(0, 1_000_000)
+        self.stock_max_input = QSpinBox(); self.stock_max_input.setRange(0, 1_000_000)
 
-        self.unit_input = QComboBox()
-        self.unit_input.addItems(["piece", "kg", "litre", "paquet"])
+        self.unit_input = QComboBox(); self.unit_input.addItems(["piece", "kg", "litre", "paquet"])
 
-        self.expiration_input = QDateEdit()
-        self.expiration_input.setCalendarPopup(True)
-        self.expiration_input.setDate(QDate.currentDate())
-
-        self.category_id_input = QSpinBox()
-        self.category_id_input.setRange(0, 999999)
-        self.supplier_id_input = QSpinBox()
-        self.supplier_id_input.setRange(0, 999999)
+        self.expiration_input = QDateEdit(); self.expiration_input.setCalendarPopup(True); self.expiration_input.setDate(QDate.currentDate())
+        self.category_id_input = QSpinBox(); self.category_id_input.setRange(0, 999999)
+        self.supplier_id_input = QSpinBox(); self.supplier_id_input.setRange(0, 999999)
 
         self.image_path_input = QLineEdit()
         self.promotion_eligible_check = QCheckBox("Éligible aux promotions")
@@ -149,12 +142,9 @@ class UserCreateDialog(QDialog):
         self.setModal(True)
 
         self.username_input = QLineEdit()
-        self.password_input = QLineEdit()
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.nom_input = QLineEdit()
-        self.prenom_input = QLineEdit()
-        self.code_input = QLineEdit()
-        self.phone_input = QLineEdit()
+        self.password_input = QLineEdit(); self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.nom_input = QLineEdit(); self.prenom_input = QLineEdit()
+        self.code_input = QLineEdit(); self.phone_input = QLineEdit()
 
         self.role_box = QComboBox()
         self.role_box.addItem("Admin", UserRole.ADMIN)
@@ -180,14 +170,13 @@ class AdminDashboard(QWidget):
         super().__init__()
         self.user = user
         self.setWindowTitle("Dashboard Admin")
-        self.resize(1300, 800)
+        self.resize(1320, 820)
 
         root = QHBoxLayout(self)
 
         self.menu = QListWidget()
-        self.menu.setFixedWidth(230)
-        for label in ["Dashboard", "Produits", "Promotions", "Utilisateurs", "Stock", "Rapports", "Paramètres"]:
-            QListWidgetItem(label, self.menu)
+        self.menu.setFixedWidth(240)
+        self._populate_sidebar()
 
         self.stack = QStackedWidget()
         self.dashboard_page = self._build_dashboard_page()
@@ -198,15 +187,7 @@ class AdminDashboard(QWidget):
         self.reports_page = self._build_placeholder_page("Rapports")
         self.settings_page = self._build_placeholder_page("Paramètres")
 
-        for page in [
-            self.dashboard_page,
-            self.products_page,
-            self.promotions_page,
-            self.users_page,
-            self.stock_page,
-            self.reports_page,
-            self.settings_page,
-        ]:
+        for page in [self.dashboard_page, self.products_page, self.promotions_page, self.users_page, self.stock_page, self.reports_page, self.settings_page]:
             self.stack.addWidget(page)
 
         self.menu.currentRowChanged.connect(self._on_menu_changed)
@@ -217,10 +198,23 @@ class AdminDashboard(QWidget):
 
         self.refresh_dashboard()
 
-    def _build_dashboard_page(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
+    def _populate_sidebar(self) -> None:
+        style = self.style()
+        entries = [
+            ("Dashboard", QStyle.StandardPixmap.SP_ComputerIcon),
+            ("Produits", QStyle.StandardPixmap.SP_FileDialogContentsView),
+            ("Promotions", QStyle.StandardPixmap.SP_DialogApplyButton),
+            ("Utilisateurs", QStyle.StandardPixmap.SP_DirHomeIcon),
+            ("Stock", QStyle.StandardPixmap.SP_DriveHDIcon),
+            ("Rapports", QStyle.StandardPixmap.SP_FileDialogDetailedView),
+            ("Paramètres", QStyle.StandardPixmap.SP_FileDialogInfoView),
+        ]
+        for label, icon_key in entries:
+            item = QListWidgetItem(style.standardIcon(icon_key), label)
+            self.menu.addItem(item)
 
+    def _build_dashboard_page(self) -> QWidget:
+        page = QWidget(); layout = QVBoxLayout(page)
         title = QLabel(f"Bienvenue {self.user.prenom} {self.user.nom} — Centre de contrôle")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
         layout.addWidget(title)
@@ -233,25 +227,15 @@ class AdminDashboard(QWidget):
         layout.addLayout(cards)
 
         control_row = QHBoxLayout()
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Recherche rapide: nom / code-barres / référence / marque")
+        self.search_input = QLineEdit(); self.search_input.setPlaceholderText("Recherche rapide: nom / code-barres / référence / marque")
         self.search_input.returnPressed.connect(self._search_products)
         self.search_input.textChanged.connect(self._search_products)
-        search_button = QPushButton("Rechercher")
-        search_button.clicked.connect(self._search_products)
-
-        add_product_btn = QPushButton("+ Ajouter produit")
-        add_product_btn.clicked.connect(self._create_product)
-        add_promo_btn = QPushButton("+ Créer promotion")
-        add_promo_btn.clicked.connect(self._create_promotion)
-        add_user_btn = QPushButton("+ Nouvel utilisateur")
-        add_user_btn.clicked.connect(self._create_user)
-
+        search_button = QPushButton("Rechercher"); search_button.clicked.connect(self._search_products)
+        add_product_btn = QPushButton("+ Ajouter produit"); add_product_btn.clicked.connect(self._create_product)
+        add_promo_btn = QPushButton("+ Créer promotion"); add_promo_btn.clicked.connect(self._create_promotion)
+        add_user_btn = QPushButton("+ Nouvel utilisateur"); add_user_btn.clicked.connect(self._create_user)
         control_row.addWidget(self.search_input, 1)
-        control_row.addWidget(search_button)
-        control_row.addWidget(add_product_btn)
-        control_row.addWidget(add_promo_btn)
-        control_row.addWidget(add_user_btn)
+        control_row.addWidget(search_button); control_row.addWidget(add_product_btn); control_row.addWidget(add_promo_btn); control_row.addWidget(add_user_btn)
         layout.addLayout(control_row)
 
         self.search_table = QTableWidget(0, 7)
@@ -259,21 +243,11 @@ class AdminDashboard(QWidget):
         layout.addWidget(self.search_table)
 
         bottom = QHBoxLayout()
-        self.notifications_box = QTextEdit()
-        self.notifications_box.setReadOnly(True)
-        self.activity_box = QTextEdit()
-        self.activity_box.setReadOnly(True)
-
-        notif_group = QGroupBox("Notifications système")
-        notif_layout = QVBoxLayout(notif_group)
-        notif_layout.addWidget(self.notifications_box)
-
-        activity_group = QGroupBox("Activité récente")
-        activity_layout = QVBoxLayout(activity_group)
-        activity_layout.addWidget(self.activity_box)
-
-        bottom.addWidget(notif_group)
-        bottom.addWidget(activity_group)
+        self.notifications_box = QTextEdit(); self.notifications_box.setReadOnly(True)
+        self.activity_box = QTextEdit(); self.activity_box.setReadOnly(True)
+        notif_group = QGroupBox("Notifications système"); QVBoxLayout(notif_group).addWidget(self.notifications_box)
+        activity_group = QGroupBox("Activité récente"); QVBoxLayout(activity_group).addWidget(self.activity_box)
+        bottom.addWidget(notif_group); bottom.addWidget(activity_group)
         layout.addLayout(bottom)
 
         refresh_btn = QPushButton("Actualiser")
@@ -282,79 +256,64 @@ class AdminDashboard(QWidget):
         return page
 
     def _build_products_page(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-
-        header = QLabel("Gestion produits")
-        header.setStyleSheet("font-size:18px; font-weight:bold;")
-        layout.addWidget(header)
+        page = QWidget(); layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("Gestion produits"))
 
         actions = QHBoxLayout()
-        self.products_search_input = QLineEdit()
-        self.products_search_input.setPlaceholderText("Rechercher produit")
+        self.products_search_input = QLineEdit(); self.products_search_input.setPlaceholderText("Rechercher produit")
         self.products_search_input.textChanged.connect(self._refresh_products_table)
 
-        btn_add = QPushButton("Ajouter")
-        btn_add.clicked.connect(self._create_product)
-        btn_delete = QPushButton("Supprimer")
-        btn_delete.clicked.connect(self._delete_selected_product)
-        btn_toggle = QPushButton("Activer / Désactiver")
-        btn_toggle.clicked.connect(self._toggle_selected_product_status)
+        btn_add = QPushButton("Ajouter"); btn_add.clicked.connect(self._create_product)
+        btn_toggle = QPushButton("Activer / Désactiver"); btn_toggle.clicked.connect(self._toggle_selected_product_status)
+        btn_delete = QPushButton("Supprimer"); btn_delete.clicked.connect(self._delete_selected_product)
 
-        actions.addWidget(self.products_search_input, 1)
-        actions.addWidget(btn_add)
-        actions.addWidget(btn_toggle)
-        actions.addWidget(btn_delete)
+        actions.addWidget(self.products_search_input, 1); actions.addWidget(btn_add); actions.addWidget(btn_toggle); actions.addWidget(btn_delete)
         layout.addLayout(actions)
 
         self.products_table = QTableWidget(0, 9)
-        self.products_table.setHorizontalHeaderLabels(
-            ["ID", "Barcode", "Réf", "Nom", "Marque", "Prix vente", "Stock", "Stock min", "Statut"]
-        )
+        self.products_table.setHorizontalHeaderLabels(["ID", "Barcode", "Réf", "Nom", "Marque", "Prix vente", "Stock", "Stock min", "Statut"])
         layout.addWidget(self.products_table)
         return page
 
     def _build_stock_page(self) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
+        page = QWidget(); layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("Gestion stock avancée"))
 
-        header = QLabel("Gestion stock")
-        header.setStyleSheet("font-size:18px; font-weight:bold;")
-        layout.addWidget(header)
-
-        row = QHBoxLayout()
-        self.stock_search_input = QLineEdit()
-        self.stock_search_input.setPlaceholderText("Rechercher produit pour stock")
+        actions = QHBoxLayout()
+        self.stock_search_input = QLineEdit(); self.stock_search_input.setPlaceholderText("Rechercher produit stock")
         self.stock_search_input.textChanged.connect(self._refresh_stock_table)
 
-        restock_btn = QPushButton("Renouveler stock")
-        restock_btn.clicked.connect(self._restock_selected_product)
-        set_stock_btn = QPushButton("Mettre stock exact")
-        set_stock_btn.clicked.connect(self._set_selected_stock)
+        btn_entry = QPushButton("Entrée stock"); btn_entry.clicked.connect(lambda: self._record_stock_movement(StockMovementType.ENTRY))
+        btn_loss = QPushButton("Sortie / Perte"); btn_loss.clicked.connect(lambda: self._record_stock_movement(StockMovementType.LOSS))
+        btn_adjust = QPushButton("Ajustement")
+        btn_adjust.clicked.connect(lambda: self._record_stock_movement(StockMovementType.ADJUSTMENT))
+        btn_restock = QPushButton("Renouveler stock"); btn_restock.clicked.connect(self._restock_selected_product)
+        btn_exact = QPushButton("Inventaire manuel")
+        btn_exact.clicked.connect(self._set_selected_stock)
 
-        row.addWidget(self.stock_search_input, 1)
-        row.addWidget(restock_btn)
-        row.addWidget(set_stock_btn)
-        layout.addLayout(row)
+        actions.addWidget(self.stock_search_input, 1)
+        actions.addWidget(btn_entry); actions.addWidget(btn_loss); actions.addWidget(btn_adjust)
+        actions.addWidget(btn_restock); actions.addWidget(btn_exact)
+        layout.addLayout(actions)
 
-        self.stock_table = QTableWidget(0, 8)
-        self.stock_table.setHorizontalHeaderLabels(
-            ["ID", "Barcode", "Nom", "Stock", "Min", "Max", "Unité", "Alerte"]
-        )
+        self.stock_table = QTableWidget(0, 9)
+        self.stock_table.setHorizontalHeaderLabels(["ID", "Barcode", "Nom", "Stock", "Min", "Max", "Unité", "Expiration", "Statut"])
         layout.addWidget(self.stock_table)
+
+        self.stock_history_table = QTableWidget(0, 6)
+        self.stock_history_table.setHorizontalHeaderLabels(["Date", "Produit", "Type", "Quantité", "Raison", "Utilisateur"])
+        group = QGroupBox("Historique mouvements de stock")
+        g = QVBoxLayout(group)
+        g.addWidget(self.stock_history_table)
+        layout.addWidget(group)
         return page
 
     def _build_placeholder_page(self, module_name: str) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.addWidget(QLabel(f"Module {module_name} — en cours d'implémentation"))
-        return page
+        page = QWidget(); layout = QVBoxLayout(page); layout.addWidget(QLabel(f"Module {module_name} — en cours d'implémentation")); return page
 
     def _create_stat_card(self, grid: QGridLayout, row: int, col: int, title: str) -> QLabel:
-        box = QGroupBox(title)
-        box_layout = QVBoxLayout(box)
-        label = QLabel("0")
-        label.setStyleSheet("font-size: 28px; font-weight: bold;")
+        box = QGroupBox(title); box_layout = QVBoxLayout(box)
+        label = QLabel("0"); label.setStyleSheet("font-size:28px;font-weight:700;")
         box_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
         grid.addWidget(box, row, col)
         return label
@@ -367,17 +326,15 @@ class AdminDashboard(QWidget):
             self._refresh_products_table()
         if row == 4:
             self._refresh_stock_table()
+            self._refresh_stock_history()
 
     def _load_stats(self) -> DashboardStats:
         with SessionLocal() as session:
-            product_repo = ProductRepository(session)
-            promotion_repo = PromotionRepository(session)
-            sale_repo = SaleRepository(session)
             return DashboardStats(
-                total_products=product_repo.count_all(),
-                low_stock_products=product_repo.count_low_stock(),
-                active_promotions=promotion_repo.count_active(date.today()),
-                sales_today=sale_repo.total_sales_for_day(date.today()),
+                total_products=ProductRepository(session).count_all(),
+                low_stock_products=ProductRepository(session).count_low_stock(),
+                active_promotions=PromotionRepository(session).count_active(date.today()),
+                sales_today=SaleRepository(session).total_sales_for_day(date.today()),
             )
 
     def _fill_search_results(self, products: list[Product]) -> None:
@@ -393,72 +350,78 @@ class AdminDashboard(QWidget):
 
     def _load_notifications(self) -> None:
         with SessionLocal() as session:
-            product_repo = ProductRepository(session)
-            low_stock = product_repo.count_low_stock()
-            notifications: list[str] = []
-            if low_stock > 0:
-                notifications.append(f"⚠ {low_stock} produit(s) en rupture ou sous stock minimum.")
-            else:
-                notifications.append("✅ Stock sous contrôle.")
-            self.notifications_box.setPlainText("\n".join(notifications))
+            repo = ProductRepository(session)
+            low_stock = repo.count_low_stock()
+            products = repo.list_all()
+
+        notifications: list[str] = []
+        if low_stock > 0:
+            notifications.append(f"⚠ {low_stock} produit(s) sous le stock minimum.")
+        expired = [p for p in products if p.expiration_date and p.expiration_date <= date.today()]
+        near_exp = [p for p in products if p.expiration_date and 0 <= (p.expiration_date - date.today()).days <= 7]
+        if expired:
+            notifications.append(f"⛔ {len(expired)} produit(s) expiré(s).")
+        if near_exp:
+            notifications.append(f"ℹ {len(near_exp)} produit(s) expirent sous 7 jours.")
+        if not notifications:
+            notifications.append("✅ Aucun incident critique détecté.")
+        self.notifications_box.setPlainText("\n".join(notifications))
 
     def _load_recent_activity(self) -> None:
         entries: list[tuple[str, object]] = []
         with SessionLocal() as session:
-            products = ProductRepository(session).latest_created(limit=5)
-            promotions = PromotionRepository(session).latest_created(limit=5)
-            users = UserRepository(session).latest_created(limit=5)
-            for p in products:
-                entries.append((f"Produit ajouté: {p.name}", p.created_at))
-            for promo in promotions:
-                entries.append((f"Promotion créée: {promo.name}", promo.created_at))
-            for u in users:
-                entries.append((f"Utilisateur créé: {u.username}", u.created_at))
-        entries.sort(key=lambda item: item[1], reverse=True)
+            products = ProductRepository(session).latest_created(5)
+            promotions = PromotionRepository(session).latest_created(5)
+            users = UserRepository(session).latest_created(5)
+            for p in products: entries.append((f"Produit ajouté: {p.name}", p.created_at))
+            for promo in promotions: entries.append((f"Promotion créée: {promo.name}", promo.created_at))
+            for u in users: entries.append((f"Utilisateur créé: {u.username}", u.created_at))
+
+        entries.sort(key=lambda x: x[1], reverse=True)
         self.activity_box.setPlainText("\n".join(msg for msg, _ in entries[:12]) or "Aucune activité récente.")
 
     def _search_products(self) -> None:
         query = self.search_input.text().strip()
         with SessionLocal() as session:
             repo = ProductRepository(session)
-            products = repo.search_by_name_or_barcode(query) if query else repo.list_all()[:20]
+            products = repo.search_by_name_or_barcode(query, limit=50) if query else repo.list_all()[:20]
         self._fill_search_results(products)
 
     def _refresh_products_table(self) -> None:
         query = self.products_search_input.text().strip()
         with SessionLocal() as session:
             repo = ProductRepository(session)
-            products = repo.search_by_name_or_barcode(query, limit=200) if query else repo.list_all()
+            products = repo.search_by_name_or_barcode(query, 200) if query else repo.list_all()
 
         self.products_table.setRowCount(len(products))
         for row, p in enumerate(products):
-            self.products_table.setItem(row, 0, QTableWidgetItem(str(p.id)))
-            self.products_table.setItem(row, 1, QTableWidgetItem(p.barcode))
-            self.products_table.setItem(row, 2, QTableWidgetItem(p.internal_reference or "-"))
-            self.products_table.setItem(row, 3, QTableWidgetItem(p.name))
-            self.products_table.setItem(row, 4, QTableWidgetItem(p.brand or "-"))
-            self.products_table.setItem(row, 5, QTableWidgetItem(str(p.sale_price)))
-            self.products_table.setItem(row, 6, QTableWidgetItem(str(p.stock_quantity)))
-            self.products_table.setItem(row, 7, QTableWidgetItem(str(p.stock_min)))
-            self.products_table.setItem(row, 8, QTableWidgetItem(p.status.value))
+            for col, val in enumerate([p.id, p.barcode, p.internal_reference or "-", p.name, p.brand or "-", p.sale_price, p.stock_quantity, p.stock_min, p.status.value]):
+                self.products_table.setItem(row, col, QTableWidgetItem(str(val)))
 
     def _refresh_stock_table(self) -> None:
         query = self.stock_search_input.text().strip()
         with SessionLocal() as session:
             repo = ProductRepository(session)
-            products = repo.search_by_name_or_barcode(query, limit=200) if query else repo.list_all()
+            products = repo.search_by_name_or_barcode(query, 250) if query else repo.list_all()
 
         self.stock_table.setRowCount(len(products))
         for row, p in enumerate(products):
-            alert = "RUPTURE" if p.stock_quantity <= 0 else ("ALERTE" if p.stock_quantity <= p.stock_min else "OK")
-            self.stock_table.setItem(row, 0, QTableWidgetItem(str(p.id)))
-            self.stock_table.setItem(row, 1, QTableWidgetItem(p.barcode))
-            self.stock_table.setItem(row, 2, QTableWidgetItem(p.name))
-            self.stock_table.setItem(row, 3, QTableWidgetItem(str(p.stock_quantity)))
-            self.stock_table.setItem(row, 4, QTableWidgetItem(str(p.stock_min)))
-            self.stock_table.setItem(row, 5, QTableWidgetItem(str(p.stock_max)))
-            self.stock_table.setItem(row, 6, QTableWidgetItem(p.unit))
-            self.stock_table.setItem(row, 7, QTableWidgetItem(alert))
+            status = "RUPTURE" if p.stock_quantity <= 0 else ("FAIBLE" if p.stock_quantity <= p.stock_min else "NORMAL")
+            expiration = p.expiration_date.isoformat() if p.expiration_date else "-"
+            for col, val in enumerate([p.id, p.barcode, p.name, p.stock_quantity, p.stock_min, p.stock_max, p.unit, expiration, status]):
+                self.stock_table.setItem(row, col, QTableWidgetItem(str(val)))
+
+    def _refresh_stock_history(self) -> None:
+        with SessionLocal() as session:
+            movements = list(session.query(StockMovement).order_by(StockMovement.created_at.desc()).limit(50).all())
+            products = {p.id: p.name for p in ProductRepository(session).list_all()}
+
+        self.stock_history_table.setRowCount(len(movements))
+        for row, m in enumerate(movements):
+            date_str = m.created_at.strftime("%Y-%m-%d %H:%M")
+            product_name = products.get(m.product_id, f"ID {m.product_id}")
+            for col, val in enumerate([date_str, product_name, m.type.value, m.quantity, m.reason or "-", m.user_id or "-"]):
+                self.stock_history_table.setItem(row, col, QTableWidgetItem(str(val)))
 
     def _selected_product_id_from_table(self, table: QTableWidget) -> int | None:
         row = table.currentRow()
@@ -489,8 +452,8 @@ class AdminDashboard(QWidget):
             QMessageBox.warning(self, "Erreur", "Prix/TVA invalides")
             return
 
-        expiration_qdate = dialog.expiration_input.date()
-        expiration_date = date(expiration_qdate.year(), expiration_qdate.month(), expiration_qdate.day())
+        qd = dialog.expiration_input.date()
+        expiration_date = date(qd.year(), qd.month(), qd.day())
 
         with SessionLocal() as session:
             service = ProductService(ProductRepository(session))
@@ -534,20 +497,14 @@ class AdminDashboard(QWidget):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        promo_type: PromotionType = dialog.type_box.currentData()
-        value_text = dialog.value_input.text().strip()
-        if not value_text:
-            QMessageBox.warning(self, "Erreur", "Valeur de promotion requise")
-            return
-
         try:
-            discount_value = Decimal(value_text)
+            discount_value = Decimal(dialog.value_input.text().strip())
         except InvalidOperation:
             QMessageBox.warning(self, "Erreur", "Valeur de promotion invalide")
             return
 
+        promo_type: PromotionType = dialog.type_box.currentData()
         with SessionLocal() as session:
-            repo = PromotionRepository(session)
             promo = Promotion(
                 name=dialog.name_input.text().strip() or "Promo",
                 product_id=int(dialog.product_box.currentData()),
@@ -558,9 +515,8 @@ class AdminDashboard(QWidget):
                 end_date=date.today(),
                 active=True,
             )
-            repo.add(promo)
+            PromotionRepository(session).add(promo)
             session.commit()
-
         self.refresh_dashboard()
 
     def _create_user(self) -> None:
@@ -585,27 +541,20 @@ class AdminDashboard(QWidget):
                 session.rollback()
                 QMessageBox.warning(self, "Erreur", str(exc))
                 return
-
         self.refresh_dashboard()
 
     def _delete_selected_product(self) -> None:
         product_id = self._selected_product_id_from_table(self.products_table)
         if not product_id:
-            QMessageBox.information(self, "Information", "Sélectionnez un produit à supprimer.")
+            QMessageBox.information(self, "Information", "Sélectionnez un produit.")
             return
-
         if QMessageBox.question(self, "Confirmation", "Supprimer ce produit ?") != QMessageBox.StandardButton.Yes:
             return
-
         with SessionLocal() as session:
-            repo = ProductRepository(session)
-            ok = repo.delete(product_id)
-            if ok:
-                session.commit()
-            else:
-                session.rollback()
+            if not ProductRepository(session).delete(product_id):
                 QMessageBox.warning(self, "Erreur", "Produit introuvable")
                 return
+            session.commit()
         self.refresh_dashboard()
 
     def _toggle_selected_product_status(self) -> None:
@@ -613,7 +562,6 @@ class AdminDashboard(QWidget):
         if not product_id:
             QMessageBox.information(self, "Information", "Sélectionnez un produit.")
             return
-
         with SessionLocal() as session:
             repo = ProductRepository(session)
             product = repo.get_by_id(product_id)
@@ -623,6 +571,43 @@ class AdminDashboard(QWidget):
             new_status = ProductStatus.INACTIVE if product.status == ProductStatus.ACTIVE else ProductStatus.ACTIVE
             repo.set_status(product_id, new_status)
             session.commit()
+        self.refresh_dashboard()
+
+    def _record_stock_movement(self, movement_type: StockMovementType) -> None:
+        product_id = self._selected_product_id_from_table(self.stock_table)
+        if not product_id:
+            QMessageBox.information(self, "Information", "Sélectionnez un produit dans le tableau stock.")
+            return
+
+        qty, ok = QInputDialog.getInt(self, "Mouvement stock", "Quantité", 1, 1, 1_000_000)
+        if not ok:
+            return
+
+        reason, ok = QInputDialog.getText(self, "Mouvement stock", "Raison")
+        if not ok:
+            return
+
+        with SessionLocal() as session:
+            repo = ProductRepository(session)
+            product = repo.get_by_id(product_id)
+            if not product:
+                QMessageBox.warning(self, "Erreur", "Produit introuvable")
+                return
+
+            if movement_type == StockMovementType.ENTRY:
+                product.stock_quantity += qty
+            elif movement_type in (StockMovementType.LOSS, StockMovementType.ADJUSTMENT):
+                product.stock_quantity = max(0, product.stock_quantity - qty)
+
+            movement = StockMovement(
+                product_id=product_id,
+                type=movement_type,
+                quantity=qty,
+                reason=reason or movement_type.value,
+                user_id=self.user.id,
+            )
+            session.add(movement)
+            session.commit()
 
         self.refresh_dashboard()
 
@@ -631,18 +616,16 @@ class AdminDashboard(QWidget):
         if not product_id:
             QMessageBox.information(self, "Information", "Sélectionnez un produit.")
             return
-
-        qty, ok = QInputDialog.getInt(self, "Renouvellement de stock", "Quantité à ajouter", 1, 1, 1_000_000)
+        qty, ok = QInputDialog.getInt(self, "Renouvellement", "Quantité à ajouter", 1, 1, 1_000_000)
         if not ok:
             return
-
         with SessionLocal() as session:
             repo = ProductRepository(session)
             if not repo.restock(product_id, qty):
                 QMessageBox.warning(self, "Erreur", "Produit introuvable")
                 return
+            session.add(StockMovement(product_id=product_id, type=StockMovementType.ENTRY, quantity=qty, reason="restock", user_id=self.user.id))
             session.commit()
-
         self.refresh_dashboard()
 
     def _set_selected_stock(self) -> None:
@@ -650,18 +633,22 @@ class AdminDashboard(QWidget):
         if not product_id:
             QMessageBox.information(self, "Information", "Sélectionnez un produit.")
             return
-
-        qty, ok = QInputDialog.getInt(self, "Mise à jour stock", "Nouveau stock", 0, 0, 1_000_000)
+        qty, ok = QInputDialog.getInt(self, "Inventaire manuel", "Stock réel", 0, 0, 1_000_000)
         if not ok:
             return
-
         with SessionLocal() as session:
             repo = ProductRepository(session)
-            if not repo.update_stock(product_id, qty):
+            product = repo.get_by_id(product_id)
+            if not product:
                 QMessageBox.warning(self, "Erreur", "Produit introuvable")
                 return
+            old_qty = product.stock_quantity
+            if not repo.update_stock(product_id, qty):
+                QMessageBox.warning(self, "Erreur", "Mise à jour impossible")
+                return
+            diff = abs(qty - old_qty)
+            session.add(StockMovement(product_id=product_id, type=StockMovementType.ADJUSTMENT, quantity=diff, reason="inventaire manuel", user_id=self.user.id))
             session.commit()
-
         self.refresh_dashboard()
 
     def refresh_dashboard(self) -> None:
@@ -675,3 +662,4 @@ class AdminDashboard(QWidget):
         self._load_recent_activity()
         self._refresh_products_table()
         self._refresh_stock_table()
+        self._refresh_stock_history()

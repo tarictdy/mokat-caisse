@@ -41,7 +41,9 @@ from repositories.promotion_repo import PromotionRepository
 from repositories.sale_repo import SaleRepository
 from repositories.user_repo import UserRepository
 from services.product_service import ProductService
+from services.sale_service import SaleService
 from services.user_service import UserService
+from ui.sales.pos_screen import POSScreen
 
 
 @dataclass
@@ -169,6 +171,7 @@ class AdminDashboard(QWidget):
     def __init__(self, user: User) -> None:
         super().__init__()
         self.user = user
+        self._pos_windows: list[POSScreen] = []
         self.setWindowTitle("Dashboard Admin")
         self.resize(1320, 820)
 
@@ -184,10 +187,11 @@ class AdminDashboard(QWidget):
         self.promotions_page = self._build_placeholder_page("Promotions")
         self.users_page = self._build_placeholder_page("Utilisateurs")
         self.stock_page = self._build_stock_page()
+        self.pos_page = self._build_pos_page()
         self.reports_page = self._build_placeholder_page("Rapports")
         self.settings_page = self._build_placeholder_page("Paramètres")
 
-        for page in [self.dashboard_page, self.products_page, self.promotions_page, self.users_page, self.stock_page, self.reports_page, self.settings_page]:
+        for page in [self.dashboard_page, self.products_page, self.promotions_page, self.users_page, self.stock_page, self.pos_page, self.reports_page, self.settings_page]:
             self.stack.addWidget(page)
 
         self.menu.currentRowChanged.connect(self._on_menu_changed)
@@ -206,6 +210,7 @@ class AdminDashboard(QWidget):
             ("Promotions", QStyle.StandardPixmap.SP_DialogApplyButton),
             ("Utilisateurs", QStyle.StandardPixmap.SP_DirHomeIcon),
             ("Stock", QStyle.StandardPixmap.SP_DriveHDIcon),
+            ("Caisse", QStyle.StandardPixmap.SP_ComputerIcon),
             ("Rapports", QStyle.StandardPixmap.SP_FileDialogDetailedView),
             ("Paramètres", QStyle.StandardPixmap.SP_FileDialogInfoView),
         ]
@@ -234,8 +239,9 @@ class AdminDashboard(QWidget):
         add_product_btn = QPushButton("+ Ajouter produit"); add_product_btn.clicked.connect(self._create_product)
         add_promo_btn = QPushButton("+ Créer promotion"); add_promo_btn.clicked.connect(self._create_promotion)
         add_user_btn = QPushButton("+ Nouvel utilisateur"); add_user_btn.clicked.connect(self._create_user)
+        open_pos_btn = QPushButton("Ouvrir interface caisse"); open_pos_btn.clicked.connect(self._open_pos_screen)
         control_row.addWidget(self.search_input, 1)
-        control_row.addWidget(search_button); control_row.addWidget(add_product_btn); control_row.addWidget(add_promo_btn); control_row.addWidget(add_user_btn)
+        control_row.addWidget(search_button); control_row.addWidget(add_product_btn); control_row.addWidget(add_promo_btn); control_row.addWidget(add_user_btn); control_row.addWidget(open_pos_btn)
         layout.addLayout(control_row)
 
         self.search_table = QTableWidget(0, 7)
@@ -308,6 +314,24 @@ class AdminDashboard(QWidget):
         layout.addWidget(group)
         return page
 
+    def _build_pos_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("🛒 Interface caisse"))
+
+        card = QGroupBox("Accès rapide caisse")
+        card_layout = QVBoxLayout(card)
+        card_layout.addWidget(QLabel("Ouvrez l'écran de caisse tactile pour scanner, encaisser et imprimer."))
+
+        open_btn = QPushButton("Ouvrir l'interface caisse")
+        open_btn.setMinimumHeight(44)
+        open_btn.clicked.connect(self._open_pos_screen)
+        card_layout.addWidget(open_btn)
+
+        layout.addWidget(card)
+        layout.addStretch(1)
+        return page
+
     def _build_placeholder_page(self, module_name: str) -> QWidget:
         page = QWidget(); layout = QVBoxLayout(page); layout.addWidget(QLabel(f"Module {module_name} — en cours d'implémentation")); return page
 
@@ -327,6 +351,15 @@ class AdminDashboard(QWidget):
         if row == 4:
             self._refresh_stock_table()
             self._refresh_stock_history()
+
+    def _open_pos_screen(self) -> None:
+        session = SessionLocal()
+        service = SaleService(SaleRepository(session), ProductRepository(session))
+        pos_window = POSScreen(service, self.user)
+        pos_window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        pos_window.destroyed.connect(lambda *_: session.close())
+        pos_window.show()
+        self._pos_windows.append(pos_window)
 
     def _load_stats(self) -> DashboardStats:
         with SessionLocal() as session:

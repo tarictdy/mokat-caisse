@@ -12,6 +12,10 @@ class CartWidget(QWidget):
         super().__init__()
         self.table = QTableWidget(0, 4)
         self.table.setHorizontalHeaderLabels(["Nom", "Prix", "Qté", "Total"])
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.verticalHeader().setVisible(False)
+
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for col in (1, 2, 3):

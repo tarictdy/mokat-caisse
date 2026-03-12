@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from core.database import SessionLocal
 from models.user import User
@@ -17,13 +17,26 @@ class CashierDashboard(QWidget):
         self.user = user
         self._pos_windows: list[POSScreen] = []
         self.setWindowTitle("Caisse")
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel(f"Caissier: {user.prenom} {user.nom}"))
-        layout.addWidget(QLabel("Accès rapide: POS, paiement, impression ticket"))
+        self.resize(720, 420)
 
-        self.open_pos_btn = QPushButton("Ouvrir l'interface de caisse")
+        layout = QVBoxLayout(self)
+        title = QLabel("Interface Caissier")
+        title.setObjectName("PageTitle")
+        layout.addWidget(title)
+
+        card = QFrame()
+        card.setObjectName("Card")
+        card_layout = QVBoxLayout(card)
+        card_layout.addWidget(QLabel(f"👤 Caissier: {user.prenom} {user.nom}"))
+        card_layout.addWidget(QLabel("Accès rapide: scan produit, paiement, reçu et impression ticket."))
+
+        self.open_pos_btn = QPushButton("🛒 Ouvrir l'interface de caisse")
+        self.open_pos_btn.setMinimumHeight(48)
         self.open_pos_btn.clicked.connect(self._open_pos_screen)
-        layout.addWidget(self.open_pos_btn)
+        card_layout.addWidget(self.open_pos_btn)
+
+        layout.addWidget(card)
+        layout.addStretch(1)
 
     def _open_pos_screen(self) -> None:
         session = SessionLocal()

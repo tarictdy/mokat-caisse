@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from models.user import User
 from services.receipt_service import ReceiptService
@@ -21,27 +30,44 @@ class POSScreen(QWidget):
         self.cart_lines: list[CartLine] = []
 
         self.setWindowTitle("Caisse - MokatShop")
+        self.resize(980, 660)
+
+        root = QVBoxLayout(self)
+        title = QLabel("🛒 Interface Caisse")
+        title.setObjectName("PageTitle")
+        root.addWidget(title)
+
+        scan_card = QFrame()
+        scan_card.setObjectName("Card")
+        scan_layout = QVBoxLayout(scan_card)
+        scan_layout.addWidget(QLabel("Scanner produit"))
 
         self.scan_input = QLineEdit()
         self.scan_input.setPlaceholderText("Champ scan code barre")
         self.scan_input.returnPressed.connect(self._scan_product)
+        self.scan_input.setMinimumHeight(40)
+        scan_layout.addWidget(self.scan_input)
+        root.addWidget(scan_card)
 
+        cart_card = QFrame()
+        cart_card.setObjectName("Card")
+        cart_layout = QVBoxLayout(cart_card)
+        cart_layout.addWidget(QLabel("Liste produits panier"))
         self.cart_widget = CartWidget()
+        cart_layout.addWidget(self.cart_widget)
+        root.addWidget(cart_card, 1)
+
+        payment_card = QFrame()
+        payment_card.setObjectName("Card")
+        pay_layout = QHBoxLayout(payment_card)
         self.total_label = QLabel("TOTAL A PAYER : 0 FCFA")
+        self.total_label.setStyleSheet("font-size: 18px; font-weight: 700;")
         self.pay_button = QPushButton("Valider paiement")
+        self.pay_button.setMinimumHeight(46)
         self.pay_button.clicked.connect(self._open_payment)
-
-        top_layout = QVBoxLayout(self)
-        top_layout.addWidget(QLabel("Scan produit"))
-        top_layout.addWidget(self.scan_input)
-        top_layout.addWidget(QLabel("Liste produits panier"))
-        top_layout.addWidget(self.cart_widget)
-        top_layout.addWidget(self.total_label)
-
-        payment_row = QHBoxLayout()
-        payment_row.addWidget(QLabel("Paiement"))
-        payment_row.addWidget(self.pay_button)
-        top_layout.addLayout(payment_row)
+        pay_layout.addWidget(self.total_label, 1)
+        pay_layout.addWidget(self.pay_button)
+        root.addWidget(payment_card)
 
         self.preview = ReceiptPreview()
 

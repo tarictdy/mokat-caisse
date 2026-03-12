@@ -187,10 +187,11 @@ class AdminDashboard(QWidget):
         self.promotions_page = self._build_placeholder_page("Promotions")
         self.users_page = self._build_placeholder_page("Utilisateurs")
         self.stock_page = self._build_stock_page()
+        self.pos_page = self._build_pos_page()
         self.reports_page = self._build_placeholder_page("Rapports")
         self.settings_page = self._build_placeholder_page("Paramètres")
 
-        for page in [self.dashboard_page, self.products_page, self.promotions_page, self.users_page, self.stock_page, self.reports_page, self.settings_page]:
+        for page in [self.dashboard_page, self.products_page, self.promotions_page, self.users_page, self.stock_page, self.pos_page, self.reports_page, self.settings_page]:
             self.stack.addWidget(page)
 
         self.menu.currentRowChanged.connect(self._on_menu_changed)
@@ -209,6 +210,7 @@ class AdminDashboard(QWidget):
             ("Promotions", QStyle.StandardPixmap.SP_DialogApplyButton),
             ("Utilisateurs", QStyle.StandardPixmap.SP_DirHomeIcon),
             ("Stock", QStyle.StandardPixmap.SP_DriveHDIcon),
+            ("Caisse", QStyle.StandardPixmap.SP_ComputerIcon),
             ("Rapports", QStyle.StandardPixmap.SP_FileDialogDetailedView),
             ("Paramètres", QStyle.StandardPixmap.SP_FileDialogInfoView),
         ]
@@ -310,6 +312,24 @@ class AdminDashboard(QWidget):
         g = QVBoxLayout(group)
         g.addWidget(self.stock_history_table)
         layout.addWidget(group)
+        return page
+
+    def _build_pos_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("🛒 Interface caisse"))
+
+        card = QGroupBox("Accès rapide caisse")
+        card_layout = QVBoxLayout(card)
+        card_layout.addWidget(QLabel("Ouvrez l'écran de caisse tactile pour scanner, encaisser et imprimer."))
+
+        open_btn = QPushButton("Ouvrir l'interface caisse")
+        open_btn.setMinimumHeight(44)
+        open_btn.clicked.connect(self._open_pos_screen)
+        card_layout.addWidget(open_btn)
+
+        layout.addWidget(card)
+        layout.addStretch(1)
         return page
 
     def _build_placeholder_page(self, module_name: str) -> QWidget:

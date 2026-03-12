@@ -60,6 +60,13 @@ class PaymentDialog(QDialog):
 
         self._payment_mode_changed()
 
+
+    def set_preferred_channel(self, payment_channel: str) -> None:
+        for idx in range(self.channel_select.count()):
+            if self.channel_select.itemData(idx) == payment_channel:
+                self.channel_select.setCurrentIndex(idx)
+                break
+
     def _payment_mode_changed(self) -> None:
         self.selected_channel = str(self.channel_select.currentData())
         self.selected_method = self.payment_service.resolve_payment_method(self.selected_channel)

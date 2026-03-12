@@ -12,8 +12,8 @@ from core.database import Base
 
 class PaymentMethod(str, Enum):
     CASH = "cash"
-    CARD = "card"
     MOBILE = "mobile"
+    CARD = "card"
 
 
 class Sale(Base):
@@ -28,6 +28,8 @@ class Sale(Base):
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
 
     payment_method: Mapped[PaymentMethod] = mapped_column(SAEnum(PaymentMethod), nullable=False)
+    payment_channel: Mapped[str] = mapped_column(String(30), nullable=False, default="cash")
+    transaction_reference: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     items = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")

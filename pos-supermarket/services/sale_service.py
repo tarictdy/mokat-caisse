@@ -61,7 +61,14 @@ class SaleService:
     def compute_total(self, lines: list[CartLine]) -> Decimal:
         return sum((line.total_price for line in lines), Decimal("0.00"))
 
-    def finalize_sale(self, user: User, payment_method: PaymentMethod, lines: list[CartLine]) -> Sale:
+    def finalize_sale(
+        self,
+        user: User,
+        payment_method: PaymentMethod,
+        payment_channel: str,
+        lines: list[CartLine],
+        transaction_reference: str | None = None,
+    ) -> Sale:
         total = self.compute_total(lines)
         sale = Sale(
             receipt_number=self.build_receipt_number(),
@@ -70,6 +77,8 @@ class SaleService:
             tax_amount=Decimal("0.00"),
             discount_amount=Decimal("0.00"),
             payment_method=payment_method,
+            payment_channel=payment_channel,
+            transaction_reference=transaction_reference or None,
         )
 
         for line in lines:

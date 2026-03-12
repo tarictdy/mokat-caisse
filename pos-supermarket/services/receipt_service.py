@@ -44,7 +44,12 @@ class ReceiptService:
             f"TOTAL          {self._format_money(sale.total_amount)}",
             f"Montant donné  {self._format_money(amount_given)}",
             f"Monnaie        {self._format_money(change)}",
+            f"Mode paiement  {sale.payment_channel}",
             "--------------------------------",
+        ]
+        if sale.transaction_reference:
+            lines.append(f"Réf transaction {sale.transaction_reference}")
+        lines += [
             "Merci pour votre achat",
             "--------------------------------",
         ]

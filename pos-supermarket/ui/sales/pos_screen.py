@@ -4,7 +4,6 @@ from decimal import Decimal
 
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QVBoxLayout, QWidget
 
-from models.sale import PaymentMethod
 from models.user import User
 from services.receipt_service import ReceiptService
 from services.sale_service import CartLine, SaleService
@@ -73,7 +72,13 @@ class POSScreen(QWidget):
         if dialog.exec() != PaymentDialog.DialogCode.Accepted:
             return
 
-        sale = self.sale_service.finalize_sale(self.cashier, PaymentMethod.CASH, self.cart_lines)
+        sale = self.sale_service.finalize_sale(
+            self.cashier,
+            dialog.selected_method,
+            dialog.selected_channel,
+            self.cart_lines,
+            dialog.transaction_reference,
+        )
         receipt = self.receipt_service.build_receipt_text(
             sale, self.cashier, dialog.amount_given, dialog.change, self.cart_lines
         )

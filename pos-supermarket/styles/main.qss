@@ -1,7 +1,8 @@
+/* Redirect — styles are in assets/styles/app.qss */
 QWidget {
-    background-color: #F5F7FA;
-    color: #1F2937;
-    font-family: "Segoe UI", "Inter", sans-serif;
+    background-color: #F8FAFC;
+    color: #0F172A;
+    font-family: "Segoe UI", "Inter", "Arial", sans-serif;
     font-size: 13px;
 }
 

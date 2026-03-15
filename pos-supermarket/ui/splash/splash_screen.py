@@ -1,48 +1,94 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QGraphicsOpacityEffect, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QFrame,
+    QGraphicsOpacityEffect,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class SplashScreen(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        self.setFixedSize(720, 420)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setFixedSize(720, 400)
+        self.setObjectName("LoginRoot")
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(36, 36, 36, 36)
+        root.setContentsMargins(0, 0, 0, 0)
 
-        bg = QLabel()
-        bg.setPixmap(QPixmap())
-        bg.setStyleSheet(
-            "background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #0f172a, stop:1 #1d4ed8);"
-            "border-radius:18px;"
+        # ── Main card ──────────────────────────────────────
+        card = QFrame()
+        card.setObjectName("SplashBg")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(52, 48, 52, 40)
+        card_layout.setSpacing(0)
+
+        # Brand row
+        brand_row = QHBoxLayout()
+        dot = QLabel("●")
+        dot.setStyleSheet("color: #2563EB; font-size: 14px; background: transparent;")
+        brand_lbl = QLabel("MOKAT MARKET")
+        brand_lbl.setStyleSheet(
+            "color: #FFFFFF; font-size: 18px; font-weight: 800;"
+            "letter-spacing: 3px; background: transparent; margin-left: 8px;"
+        )
+        brand_row.addWidget(dot)
+        brand_row.addWidget(brand_lbl)
+        brand_row.addStretch()
+
+        # Divider
+        div = QFrame()
+        div.setFixedHeight(1)
+        div.setStyleSheet("background: #1E293B; margin: 28px 0 32px 0;")
+
+        # Main title
+        title = QLabel("Bienvenue sur\nMOKAT MARKET POS")
+        title.setStyleSheet(
+            "color: #FFFFFF; font-size: 32px; font-weight: 700;"
+            "line-height: 1.3; background: transparent; letter-spacing: -0.5px;"
         )
 
-        overlay = QVBoxLayout(bg)
-        overlay.setContentsMargins(30, 30, 30, 30)
-
-        title = QLabel("Bienvenue sur MOKAT MARKET POS")
-        title.setStyleSheet("color:white;font-size:30px;font-weight:700;background:transparent;")
+        # Subtitle
         subtitle = QLabel("Interface de caisse moderne, rapide et fiable")
-        subtitle.setStyleSheet("color:#dbeafe;font-size:16px;background:transparent;")
+        subtitle.setStyleSheet(
+            "color: #94A3B8; font-size: 15px; background: transparent; margin-top: 10px;"
+        )
+
+        # Loading dots
+        loading = QLabel("Chargement . . .")
+        loading.setStyleSheet(
+            "color: #475569; font-size: 12px; background: transparent; margin-top: 32px;"
+        )
+
+        # Footer
         powered = QLabel("POWERED BY SOCAFTDYINDUSTRUAP")
-        powered.setStyleSheet("color:#93c5fd;font-size:12px;font-weight:600;background:transparent;")
+        powered.setStyleSheet(
+            "color: #1E40AF; font-size: 10px; font-weight: 700;"
+            "letter-spacing: 1.5px; background: transparent;"
+        )
 
-        overlay.addStretch()
-        overlay.addWidget(title)
-        overlay.addWidget(subtitle)
-        overlay.addStretch()
-        overlay.addWidget(powered, alignment=Qt.AlignmentFlag.AlignRight)
+        card_layout.addLayout(brand_row)
+        card_layout.addWidget(div)
+        card_layout.addWidget(title)
+        card_layout.addWidget(subtitle)
+        card_layout.addWidget(loading)
+        card_layout.addStretch()
+        card_layout.addWidget(powered, alignment=Qt.AlignmentFlag.AlignRight)
 
-        root.addWidget(bg)
+        root.addWidget(card)
 
+        # ── Fade-in animation ──────────────────────────────
         effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(effect)
         self.anim = QPropertyAnimation(effect, b"opacity", self)
-        self.anim.setDuration(1400)
+        self.anim.setDuration(1200)
         self.anim.setStartValue(0.0)
         self.anim.setEndValue(1.0)
         self.anim.setEasingCurve(QEasingCurve.Type.InOutCubic)

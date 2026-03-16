@@ -8,11 +8,13 @@ from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -29,6 +31,8 @@ from ui.sales.receipt_preview import ReceiptPreview
 
 
 class POSScreen(QWidget):
+    """Interface de caisse moderne et fluide"""
+    
     def __init__(self, sale_service: SaleService, cashier: User) -> None:
         super().__init__()
         self.sale_service = sale_service
@@ -41,170 +45,451 @@ class POSScreen(QWidget):
         self.held_sale_lines: list[CartLine] = []
 
         self.setWindowTitle("MOKAT MARKET — Caisse")
-        self.resize(1060, 720)
+        self.resize(1200, 800)
+        self.setStyleSheet("""
+            QWidget {
+                font-family: "Segoe UI", "Inter", sans-serif;
+            }
+        """)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Top header bar ────────────────────────────────────
+        # ══════════════════════════════════════════════════════════════════════
+        # HEADER - Barre superieure
+        # ══════════════════════════════════════════════════════════════════════
         header = QWidget()
-        header.setObjectName("TopBar")
-        header.setFixedHeight(56)
+        header.setFixedHeight(64)
+        header.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0F172A, stop:1 #1E293B);
+            }
+        """)
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(24, 0, 24, 0)
-        header_layout.setSpacing(12)
+        header_layout.setContentsMargins(28, 0, 28, 0)
+        header_layout.setSpacing(16)
 
-        brand_lbl = QLabel("MOKAT MARKET")
-        brand_lbl.setStyleSheet("color: #2563EB; font-size: 14px; font-weight: 800; letter-spacing: 2px;")
-        title_lbl = QLabel("|  Caisse")
-        title_lbl.setStyleSheet("color: #94A3B8; font-size: 14px;")
-        header_layout.addWidget(brand_lbl)
-        header_layout.addWidget(title_lbl)
+        # Logo
+        logo = QLabel("M")
+        logo.setFixedSize(38, 38)
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #3B82F6, stop:1 #1D4ED8);
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 800;
+            border-radius: 8px;
+        """)
+        header_layout.addWidget(logo)
+
+        brand_text = QVBoxLayout()
+        brand_text.setSpacing(0)
+        brand_name = QLabel("MOKAT MARKET")
+        brand_name.setStyleSheet("color: #FFFFFF; font-size: 14px; font-weight: 700; letter-spacing: 1px;")
+        brand_sub = QLabel("Point de Vente")
+        brand_sub.setStyleSheet("color: #64748B; font-size: 11px;")
+        brand_text.addWidget(brand_name)
+        brand_text.addWidget(brand_sub)
+        header_layout.addLayout(brand_text)
         header_layout.addStretch()
 
-        cashier_lbl = QLabel(f"{cashier.prenom} {cashier.nom}")
-        cashier_lbl.setStyleSheet("color: #374151; font-weight: 600;")
-        header_layout.addWidget(cashier_lbl)
+        # Status indicators
+        status_container = QHBoxLayout()
+        status_container.setSpacing(20)
+
+        # Connection status
+        conn_status = QLabel("Connecte")
+        conn_status.setStyleSheet("""
+            color: #10B981;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 12px;
+        """)
+        status_container.addWidget(conn_status)
+
+        # Cashier info
+        cashier_avatar = QLabel(f"{cashier.prenom[0]}{cashier.nom[0]}")
+        cashier_avatar.setFixedSize(36, 36)
+        cashier_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        cashier_avatar.setStyleSheet("""
+            background: #3B82F6;
+            color: #FFFFFF;
+            border-radius: 18px;
+            font-size: 12px;
+            font-weight: 700;
+        """)
+        status_container.addWidget(cashier_avatar)
+
+        cashier_name = QLabel(f"{cashier.prenom} {cashier.nom}")
+        cashier_name.setStyleSheet("color: #E2E8F0; font-size: 13px; font-weight: 600;")
+        status_container.addWidget(cashier_name)
+
+        header_layout.addLayout(status_container)
         root.addWidget(header)
 
-        # ── Main body ─────────────────────────────────────────
+        # ══════════════════════════════════════════════════════════════════════
+        # MAIN BODY - Zone principale
+        # ══════════════════════════════════════════════════════════════════════
         body = QWidget()
-        body.setStyleSheet("background: #F8FAFC;")
+        body.setStyleSheet("background: #F1F5F9;")
         body_layout = QHBoxLayout(body)
-        body_layout.setContentsMargins(20, 16, 20, 16)
-        body_layout.setSpacing(16)
+        body_layout.setContentsMargins(24, 20, 24, 20)
+        body_layout.setSpacing(20)
 
-        # Left column: scan + cart
-        left_col = QVBoxLayout()
-        left_col.setSpacing(14)
+        # ──────────────────────────────────────────────────────────────────────
+        # LEFT COLUMN - Scanner + Panier (60%)
+        # ──────────────────────────────────────────────────────────────────────
+        left_container = QWidget()
+        left_layout = QVBoxLayout(left_container)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(16)
 
-        # Scan card
-        scan_card = QFrame(); scan_card.setObjectName("Card")
+        # Scanner Card
+        scan_card = QFrame()
+        scan_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 2px solid #3B82F6;
+                border-radius: 16px;
+            }
+        """)
         scan_layout = QVBoxLayout(scan_card)
-        scan_layout.setContentsMargins(20, 16, 20, 16)
-        scan_layout.setSpacing(10)
+        scan_layout.setContentsMargins(24, 20, 24, 20)
+        scan_layout.setSpacing(12)
 
         scan_header = QHBoxLayout()
+        scan_icon = QLabel("Scan")
+        scan_icon.setStyleSheet("""
+            background: #EFF6FF;
+            color: #3B82F6;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+        """)
         scan_title = QLabel("Scanner un produit")
-        scan_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #0F172A;")
-        scan_hint = QLabel("F1 Cash   F2 Mobile   F3 Annuler   F4 Attente")
-        scan_hint.setStyleSheet("font-size: 11px; color: #94A3B8;")
+        scan_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A; margin-left: 12px;")
+        scan_header.addWidget(scan_icon)
         scan_header.addWidget(scan_title)
         scan_header.addStretch()
-        scan_header.addWidget(scan_hint)
         scan_layout.addLayout(scan_header)
 
         self.scan_input = QLineEdit()
-        self.scan_input.setPlaceholderText("Placez le curseur ici et scannez le code-barres...")
+        self.scan_input.setPlaceholderText("Scannez ou saisissez le code-barres...")
         self.scan_input.returnPressed.connect(self._scan_product)
-        self.scan_input.setMinimumHeight(42)
-        self.scan_input.setStyleSheet(
-            "border: 2px solid #2563EB; border-radius: 8px; padding: 8px 12px;"
-            "font-size: 14px; font-weight: 600;"
-        )
+        self.scan_input.setMinimumHeight(56)
+        self.scan_input.setStyleSheet("""
+            QLineEdit {
+                background: #F8FAFC;
+                border: 2px solid #E2E8F0;
+                border-radius: 12px;
+                padding: 0 20px;
+                font-size: 18px;
+                font-weight: 600;
+                color: #0F172A;
+            }
+            QLineEdit:focus {
+                border: 2px solid #3B82F6;
+                background: #FFFFFF;
+            }
+        """)
         scan_layout.addWidget(self.scan_input)
-        left_col.addWidget(scan_card)
+        left_layout.addWidget(scan_card)
 
-        # Cart card
-        cart_card = QFrame(); cart_card.setObjectName("Card")
+        # Cart Card
+        cart_card = QFrame()
+        cart_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+            }
+        """)
         cart_layout = QVBoxLayout(cart_card)
-        cart_layout.setContentsMargins(20, 16, 20, 16)
-        cart_layout.setSpacing(10)
+        cart_layout.setContentsMargins(24, 20, 24, 20)
+        cart_layout.setSpacing(12)
+
+        cart_header = QHBoxLayout()
         cart_title = QLabel("Panier")
-        cart_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #0F172A;")
-        cart_layout.addWidget(cart_title)
+        cart_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        self.cart_count = QLabel("0 articles")
+        self.cart_count.setStyleSheet("""
+            color: #64748B;
+            font-size: 13px;
+            font-weight: 500;
+            background: #F1F5F9;
+            padding: 6px 12px;
+            border-radius: 8px;
+        """)
+        cart_header.addWidget(cart_title)
+        cart_header.addStretch()
+        cart_header.addWidget(self.cart_count)
+        cart_layout.addWidget(self._header_widget(cart_header))
+
+        # Cart with scroll
+        cart_scroll = QScrollArea()
+        cart_scroll.setWidgetResizable(True)
+        cart_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        cart_scroll.setStyleSheet("""
+            QScrollArea { 
+                background: transparent; 
+                border: none; 
+            }
+            QScrollBar:vertical {
+                background: #F1F5F9;
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #CBD5E1;
+                border-radius: 4px;
+                min-height: 40px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #94A3B8;
+            }
+        """)
+        
         self.cart_widget = CartWidget()
-        cart_layout.addWidget(self.cart_widget)
-        left_col.addWidget(cart_card, 1)
+        cart_scroll.setWidget(self.cart_widget)
+        cart_layout.addWidget(cart_scroll, 1)
+        left_layout.addWidget(cart_card, 1)
 
-        body_layout.addLayout(left_col, 1)
+        body_layout.addWidget(left_container, 6)
 
-        # Right column: total + actions
-        right_col = QVBoxLayout()
-        right_col.setSpacing(14)
-        right_col.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # ──────────────────────────────────────────────────────────────────────
+        # RIGHT COLUMN - Total + Actions (40%)
+        # ──────────────────────────────────────────────────────────────────────
+        right_container = QWidget()
+        right_container.setFixedWidth(380)
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(16)
 
-        # Total card
-        total_card = QFrame(); total_card.setObjectName("Card")
+        # Total Card
+        total_card = QFrame()
+        total_card.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #0F172A, stop:1 #1E293B);
+                border-radius: 20px;
+            }
+        """)
         total_layout = QVBoxLayout(total_card)
-        total_layout.setContentsMargins(20, 20, 20, 20)
-        total_layout.setSpacing(6)
+        total_layout.setContentsMargins(28, 28, 28, 28)
+        total_layout.setSpacing(8)
 
-        total_title = QLabel("Total a payer")
-        total_title.setStyleSheet("font-size: 12px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; text-transform: uppercase;")
+        total_title = QLabel("TOTAL A PAYER")
+        total_title.setStyleSheet("""
+            color: #64748B;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+        """)
         total_layout.addWidget(total_title)
 
         self.total_label = QLabel("0 FCFA")
-        self.total_label.setStyleSheet(
-            "font-size: 36px; font-weight: 800; color: #0F172A; margin-top: 4px;"
-        )
+        self.total_label.setStyleSheet("""
+            color: #FFFFFF;
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -1px;
+        """)
         total_layout.addWidget(self.total_label)
-        right_col.addWidget(total_card)
 
-        # Payment buttons
-        btn_card = QFrame(); btn_card.setObjectName("Card")
-        btn_card_layout = QVBoxLayout(btn_card)
-        btn_card_layout.setContentsMargins(20, 16, 20, 16)
-        btn_card_layout.setSpacing(10)
+        # Tax info
+        self.tax_info = QLabel("TVA incluse")
+        self.tax_info.setStyleSheet("color: #64748B; font-size: 12px;")
+        total_layout.addWidget(self.tax_info)
 
-        btn_section_lbl = QLabel("Encaissement")
-        btn_section_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; text-transform: uppercase;")
-        btn_card_layout.addWidget(btn_section_lbl)
+        right_layout.addWidget(total_card)
 
+        # Payment Actions Card
+        actions_card = QFrame()
+        actions_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+            }
+        """)
+        actions_layout = QVBoxLayout(actions_card)
+        actions_layout.setContentsMargins(20, 20, 20, 20)
+        actions_layout.setSpacing(12)
+
+        # Main pay button
         self.pay_button = QPushButton("Valider le paiement")
-        self.pay_button.setObjectName("SuccessButton")
-        self.pay_button.setMinimumHeight(52)
-        self.pay_button.setStyleSheet(
-            "font-size: 15px; font-weight: 700; border-radius: 10px;"
-            "background: #16A34A; color: #FFFFFF; margin-bottom: 4px;"
-        )
+        self.pay_button.setMinimumHeight(60)
+        self.pay_button.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #10B981, stop:1 #059669);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 14px;
+                font-size: 17px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #059669, stop:1 #047857);
+            }
+            QPushButton:pressed {
+                background: #047857;
+            }
+        """)
         self.pay_button.clicked.connect(self._open_payment)
-        btn_card_layout.addWidget(self.pay_button)
+        actions_layout.addWidget(self.pay_button)
 
-        # Quick pay row
-        quick_row = QHBoxLayout(); quick_row.setSpacing(8)
-        self.cash_btn = QPushButton("F1 Cash")
+        # Quick payment grid
+        quick_label = QLabel("Paiement rapide")
+        quick_label.setStyleSheet("color: #64748B; font-size: 12px; font-weight: 600; margin-top: 8px;")
+        actions_layout.addWidget(quick_label)
+
+        quick_grid = QGridLayout()
+        quick_grid.setSpacing(10)
+
+        self.cash_btn = QPushButton("F1  Especes")
+        self.cash_btn.setMinimumHeight(48)
+        self.cash_btn.setStyleSheet("""
+            QPushButton {
+                background: #F8FAFC;
+                color: #0F172A;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #E2E8F0;
+                border-color: #CBD5E1;
+            }
+        """)
         self.cash_btn.clicked.connect(lambda: self._open_payment(PaymentService.CASH_CHANNEL))
-        self.mobile_btn = QPushButton("F2 Mobile")
-        self.mobile_btn.setObjectName("SecondaryButton")
+
+        self.mobile_btn = QPushButton("F2  Mobile")
+        self.mobile_btn.setMinimumHeight(48)
+        self.mobile_btn.setStyleSheet("""
+            QPushButton {
+                background: #EFF6FF;
+                color: #1D4ED8;
+                border: 1px solid #BFDBFE;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #DBEAFE;
+            }
+        """)
         self.mobile_btn.clicked.connect(lambda: self._open_payment(PaymentService.WAVE_CHANNEL))
-        quick_row.addWidget(self.cash_btn)
-        quick_row.addWidget(self.mobile_btn)
-        btn_card_layout.addLayout(quick_row)
 
-        sep = QFrame(); sep.setFixedHeight(1); sep.setStyleSheet("background: #E2E8F0;")
-        btn_card_layout.addWidget(sep)
+        quick_grid.addWidget(self.cash_btn, 0, 0)
+        quick_grid.addWidget(self.mobile_btn, 0, 1)
+        actions_layout.addLayout(quick_grid)
 
-        # Other actions
-        self.remove_btn = QPushButton("F3  Annuler dernier produit")
-        self.remove_btn.setObjectName("DangerButton")
-        self.remove_btn.setMinimumHeight(38)
+        right_layout.addWidget(actions_card)
+
+        # Utility Actions Card
+        util_card = QFrame()
+        util_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+            }
+        """)
+        util_layout = QVBoxLayout(util_card)
+        util_layout.setContentsMargins(20, 20, 20, 20)
+        util_layout.setSpacing(10)
+
+        util_label = QLabel("Actions")
+        util_label.setStyleSheet("color: #64748B; font-size: 12px; font-weight: 600;")
+        util_layout.addWidget(util_label)
+
+        self.remove_btn = QPushButton("F3  Supprimer dernier article")
+        self.remove_btn.setMinimumHeight(44)
+        self.remove_btn.setStyleSheet("""
+            QPushButton {
+                background: #FEF2F2;
+                color: #DC2626;
+                border: 1px solid #FECACA;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #FEE2E2;
+            }
+        """)
         self.remove_btn.clicked.connect(self._remove_last_product)
+        util_layout.addWidget(self.remove_btn)
 
         self.hold_btn = QPushButton("F4  Mettre en attente")
-        self.hold_btn.setObjectName("SecondaryButton")
-        self.hold_btn.setMinimumHeight(38)
+        self.hold_btn.setMinimumHeight(44)
+        self.hold_btn.setStyleSheet("""
+            QPushButton {
+                background: #FFFBEB;
+                color: #D97706;
+                border: 1px solid #FDE68A;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #FEF3C7;
+            }
+        """)
         self.hold_btn.clicked.connect(self._hold_current_sale)
+        util_layout.addWidget(self.hold_btn)
 
-        btn_card_layout.addWidget(self.remove_btn)
-        btn_card_layout.addWidget(self.hold_btn)
-        right_col.addWidget(btn_card)
-        right_col.addStretch()
+        self.clear_btn = QPushButton("Vider le panier")
+        self.clear_btn.setMinimumHeight(44)
+        self.clear_btn.setStyleSheet("""
+            QPushButton {
+                background: #F8FAFC;
+                color: #64748B;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #E2E8F0;
+            }
+        """)
+        self.clear_btn.clicked.connect(self._clear_cart)
+        util_layout.addWidget(self.clear_btn)
 
-        body_layout.addLayout(right_col)
-        right_col_widget_width = 280
-        # Fix right column width
-        right_frame = QWidget()
-        right_frame.setFixedWidth(300)
-        right_frame.setLayout(right_col)
-        body_layout.addWidget(right_frame)
+        right_layout.addWidget(util_card)
+        right_layout.addStretch()
 
+        # Shortcuts hint
+        shortcuts_lbl = QLabel("F1 Especes  |  F2 Mobile  |  F3 Annuler  |  F4 Attente")
+        shortcuts_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        shortcuts_lbl.setStyleSheet("""
+            color: #94A3B8;
+            font-size: 11px;
+            padding: 8px;
+        """)
+        right_layout.addWidget(shortcuts_lbl)
+
+        body_layout.addWidget(right_container)
         root.addWidget(body, 1)
 
         self.preview = ReceiptPreview()
         self._install_shortcuts()
         QTimer.singleShot(0, self._focus_scan_input)
+
+    def _header_widget(self, layout: QHBoxLayout) -> QWidget:
+        widget = QWidget()
+        widget.setLayout(layout)
+        return widget
 
     def showEvent(self, event) -> None:  # type: ignore[override]
         super().showEvent(event)
@@ -248,6 +533,17 @@ class POSScreen(QWidget):
         self._refresh_total()
         self._focus_scan_input()
 
+    def _clear_cart(self) -> None:
+        if not self.cart_lines:
+            return
+        if QMessageBox.question(
+            self, "Confirmation", "Voulez-vous vider le panier ?"
+        ) == QMessageBox.StandardButton.Yes:
+            self.cart_lines = []
+            self.cart_widget.load_lines(self.cart_lines)
+            self._refresh_total()
+        self._focus_scan_input()
+
     def _hold_current_sale(self) -> None:
         if not self.cart_lines:
             return
@@ -261,6 +557,7 @@ class POSScreen(QWidget):
     def _refresh_total(self) -> Decimal:
         total = self.sale_service.compute_total(self.cart_lines)
         self.total_label.setText(f"{int(total):,} FCFA")
+        self.cart_count.setText(f"{len(self.cart_lines)} article{'s' if len(self.cart_lines) != 1 else ''}")
         return total
 
     def _open_payment(self, preferred_channel: str | None = None) -> None:

@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QStackedWidget,
     QStyle,
@@ -55,57 +56,276 @@ class DashboardStats:
     sales_today: Decimal
 
 
-# ── Dialogs ────────────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# DIALOGS - Formulaires avec scroll
+# ══════════════════════════════════════════════════════════════════════════════
 
 class ProductCreateDialog(QDialog):
+    """Dialogue creation produit avec scroll pour tous les champs"""
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Ajouter un produit")
+        self.setWindowTitle("Nouveau produit")
         self.setModal(True)
-        self.resize(540, 640)
+        self.setMinimumSize(560, 680)
+        self.setStyleSheet("""
+            QDialog {
+                background: #F8FAFC;
+            }
+            QLabel {
+                color: #374151;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QLineEdit, QSpinBox, QComboBox, QDateEdit {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-size: 13px;
+                color: #1F2937;
+                min-height: 20px;
+            }
+            QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QDateEdit:focus {
+                border: 2px solid #2563EB;
+                outline: none;
+            }
+            QCheckBox {
+                color: #374151;
+                font-size: 13px;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                border: 2px solid #CBD5E1;
+            }
+            QCheckBox::indicator:checked {
+                background: #2563EB;
+                border-color: #2563EB;
+            }
+        """)
 
-        self.barcode_input = QLineEdit()
-        self.reference_input = QLineEdit()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Header
+        header = QWidget()
+        header.setStyleSheet("background: #FFFFFF; border-bottom: 1px solid #E2E8F0;")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(28, 24, 28, 20)
+        title = QLabel("Ajouter un nouveau produit")
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #0F172A;")
+        subtitle = QLabel("Remplissez les informations du produit")
+        subtitle.setStyleSheet("font-size: 13px; color: #64748B; font-weight: 400;")
+        header_layout.addWidget(title)
+        header_layout.addWidget(subtitle)
+        main_layout.addWidget(header)
+
+        # Scroll area pour le formulaire
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: #F8FAFC; border: none; }")
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        form_container = QWidget()
+        form_container.setStyleSheet("background: #F8FAFC;")
+        form = QVBoxLayout(form_container)
+        form.setContentsMargins(28, 24, 28, 24)
+        form.setSpacing(20)
+
+        # === Section: Informations de base ===
+        section1 = self._create_section("Informations de base")
+        grid1 = QGridLayout()
+        grid1.setSpacing(16)
+        grid1.setColumnStretch(0, 1)
+        grid1.setColumnStretch(1, 1)
+
         self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Ex: Lait concentre sucre")
+        self.barcode_input = QLineEdit()
+        self.barcode_input.setPlaceholderText("Ex: 6001234567890")
+        self.reference_input = QLineEdit()
+        self.reference_input.setPlaceholderText("Ex: REF-001")
         self.brand_input = QLineEdit()
+        self.brand_input.setPlaceholderText("Ex: Nestle")
         self.description_input = QLineEdit()
+        self.description_input.setPlaceholderText("Description du produit...")
+
+        grid1.addWidget(self._field("Nom du produit *"), 0, 0)
+        grid1.addWidget(self.name_input, 1, 0)
+        grid1.addWidget(self._field("Code-barres *"), 0, 1)
+        grid1.addWidget(self.barcode_input, 1, 1)
+        grid1.addWidget(self._field("Reference interne"), 2, 0)
+        grid1.addWidget(self.reference_input, 3, 0)
+        grid1.addWidget(self._field("Marque"), 2, 1)
+        grid1.addWidget(self.brand_input, 3, 1)
+        grid1.addWidget(self._field("Description"), 4, 0, 1, 2)
+        grid1.addWidget(self.description_input, 5, 0, 1, 2)
+
+        section1.layout().addLayout(grid1)
+        form.addWidget(section1)
+
+        # === Section: Prix et taxes ===
+        section2 = self._create_section("Prix et taxes")
+        grid2 = QGridLayout()
+        grid2.setSpacing(16)
+        grid2.setColumnStretch(0, 1)
+        grid2.setColumnStretch(1, 1)
+        grid2.setColumnStretch(2, 1)
+
         self.purchase_price_input = QLineEdit("0")
         self.sale_price_input = QLineEdit()
+        self.sale_price_input.setPlaceholderText("Prix de vente")
         self.tax_rate_input = QLineEdit("0")
-        self.stock_input = QSpinBox(); self.stock_input.setRange(0, 1_000_000)
-        self.stock_min_input = QSpinBox(); self.stock_min_input.setRange(0, 1_000_000)
-        self.stock_max_input = QSpinBox(); self.stock_max_input.setRange(0, 1_000_000)
-        self.unit_input = QComboBox(); self.unit_input.addItems(["piece", "kg", "litre", "paquet"])
-        self.expiration_input = QDateEdit(); self.expiration_input.setCalendarPopup(True); self.expiration_input.setDate(QDate.currentDate())
-        self.category_id_input = QSpinBox(); self.category_id_input.setRange(0, 999999)
-        self.supplier_id_input = QSpinBox(); self.supplier_id_input.setRange(0, 999999)
+
+        grid2.addWidget(self._field("Prix d'achat (FCFA)"), 0, 0)
+        grid2.addWidget(self.purchase_price_input, 1, 0)
+        grid2.addWidget(self._field("Prix de vente (FCFA) *"), 0, 1)
+        grid2.addWidget(self.sale_price_input, 1, 1)
+        grid2.addWidget(self._field("TVA (%)"), 0, 2)
+        grid2.addWidget(self.tax_rate_input, 1, 2)
+
+        section2.layout().addLayout(grid2)
+        form.addWidget(section2)
+
+        # === Section: Stock ===
+        section3 = self._create_section("Gestion du stock")
+        grid3 = QGridLayout()
+        grid3.setSpacing(16)
+
+        self.stock_input = QSpinBox()
+        self.stock_input.setRange(0, 1_000_000)
+        self.stock_min_input = QSpinBox()
+        self.stock_min_input.setRange(0, 1_000_000)
+        self.stock_max_input = QSpinBox()
+        self.stock_max_input.setRange(0, 1_000_000)
+        self.unit_input = QComboBox()
+        self.unit_input.addItems(["piece", "kg", "litre", "paquet"])
+
+        grid3.addWidget(self._field("Stock actuel"), 0, 0)
+        grid3.addWidget(self.stock_input, 1, 0)
+        grid3.addWidget(self._field("Stock minimum"), 0, 1)
+        grid3.addWidget(self.stock_min_input, 1, 1)
+        grid3.addWidget(self._field("Stock maximum"), 0, 2)
+        grid3.addWidget(self.stock_max_input, 1, 2)
+        grid3.addWidget(self._field("Unite"), 0, 3)
+        grid3.addWidget(self.unit_input, 1, 3)
+
+        section3.layout().addLayout(grid3)
+        form.addWidget(section3)
+
+        # === Section: Autres informations ===
+        section4 = self._create_section("Autres informations")
+        grid4 = QGridLayout()
+        grid4.setSpacing(16)
+
+        self.expiration_input = QDateEdit()
+        self.expiration_input.setCalendarPopup(True)
+        self.expiration_input.setDate(QDate.currentDate())
+        self.category_id_input = QSpinBox()
+        self.category_id_input.setRange(0, 999999)
+        self.supplier_id_input = QSpinBox()
+        self.supplier_id_input.setRange(0, 999999)
         self.image_path_input = QLineEdit()
+        self.image_path_input.setPlaceholderText("Chemin vers l'image...")
         self.promotion_eligible_check = QCheckBox("Eligible aux promotions")
         self.promotion_eligible_check.setChecked(True)
 
-        form = QFormLayout(self)
-        form.setSpacing(10)
-        form.addRow("Nom du produit *", self.name_input)
-        form.addRow("Code-barres *", self.barcode_input)
-        form.addRow("Reference interne", self.reference_input)
-        form.addRow("Categorie (ID)", self.category_id_input)
-        form.addRow("Marque", self.brand_input)
-        form.addRow("Description", self.description_input)
-        form.addRow("Prix d'achat", self.purchase_price_input)
-        form.addRow("Prix de vente *", self.sale_price_input)
-        form.addRow("TVA (%)", self.tax_rate_input)
-        form.addRow("Stock actuel", self.stock_input)
-        form.addRow("Stock minimum", self.stock_min_input)
-        form.addRow("Stock maximum", self.stock_max_input)
-        form.addRow("Unite", self.unit_input)
-        form.addRow("Date expiration", self.expiration_input)
-        form.addRow("Fournisseur (ID)", self.supplier_id_input)
-        form.addRow("Image (chemin)", self.image_path_input)
-        form.addRow("", self.promotion_eligible_check)
+        grid4.addWidget(self._field("Date d'expiration"), 0, 0)
+        grid4.addWidget(self.expiration_input, 1, 0)
+        grid4.addWidget(self._field("Categorie (ID)"), 0, 1)
+        grid4.addWidget(self.category_id_input, 1, 1)
+        grid4.addWidget(self._field("Fournisseur (ID)"), 0, 2)
+        grid4.addWidget(self.supplier_id_input, 1, 2)
+        grid4.addWidget(self._field("Chemin image"), 2, 0, 1, 3)
+        grid4.addWidget(self.image_path_input, 3, 0, 1, 3)
+        grid4.addWidget(self.promotion_eligible_check, 4, 0, 1, 3)
+
+        section4.layout().addLayout(grid4)
+        form.addWidget(section4)
+        form.addStretch()
+
+        scroll.setWidget(form_container)
+        main_layout.addWidget(scroll, 1)
+
+        # Footer avec boutons
+        footer = QWidget()
+        footer.setStyleSheet("background: #FFFFFF; border-top: 1px solid #E2E8F0;")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(28, 16, 28, 16)
+        footer_layout.setSpacing(12)
+
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background: #F1F5F9;
+                color: #475569;
+                border: none;
+                border-radius: 8px;
+                padding: 12px 24px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #E2E8F0;
+            }
+        """)
+        cancel_btn.clicked.connect(self.reject)
 
         save_btn = QPushButton("Enregistrer le produit")
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background: #2563EB;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 12px 28px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #1D4ED8;
+            }
+        """)
         save_btn.clicked.connect(self.accept)
-        form.addWidget(save_btn)
+
+        footer_layout.addStretch()
+        footer_layout.addWidget(cancel_btn)
+        footer_layout.addWidget(save_btn)
+        main_layout.addWidget(footer)
+
+    def _field(self, text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setStyleSheet("color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 0.3px;")
+        return lbl
+
+    def _create_section(self, title: str) -> QGroupBox:
+        group = QGroupBox(title)
+        group.setStyleSheet("""
+            QGroupBox {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 12px;
+                font-size: 14px;
+                font-weight: 700;
+                color: #0F172A;
+                padding-top: 24px;
+                margin-top: 8px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 20px;
+                padding: 0 8px;
+                background: #FFFFFF;
+            }
+        """)
+        layout = QVBoxLayout(group)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+        return group
 
 
 class PromotionCreateDialog(QDialog):
@@ -113,29 +333,79 @@ class PromotionCreateDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Creer une promotion")
         self.setModal(True)
-        self.resize(400, 260)
+        self.setMinimumSize(480, 400)
+        self.setStyleSheet("""
+            QDialog { background: #F8FAFC; }
+            QLabel { color: #374151; font-size: 13px; font-weight: 500; }
+            QLineEdit, QComboBox {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+            QLineEdit:focus, QComboBox:focus { border: 2px solid #2563EB; }
+        """)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Header
+        header = QWidget()
+        header.setStyleSheet("background: #FFFFFF; border-bottom: 1px solid #E2E8F0;")
+        h_layout = QVBoxLayout(header)
+        h_layout.setContentsMargins(28, 24, 28, 20)
+        title = QLabel("Nouvelle promotion")
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #0F172A;")
+        h_layout.addWidget(title)
+        main_layout.addWidget(header)
+
+        # Form
+        form_widget = QWidget()
+        form = QVBoxLayout(form_widget)
+        form.setContentsMargins(28, 24, 28, 24)
+        form.setSpacing(16)
 
         self.product_box = QComboBox()
         for p in products:
             self.product_box.addItem(f"{p.name} ({p.barcode})", p.id)
 
         self.type_box = QComboBox()
-        self.type_box.addItem("Pourcentage", PromotionType.PERCENTAGE)
-        self.type_box.addItem("Montant fixe", PromotionType.FIXED)
+        self.type_box.addItem("Pourcentage (%)", PromotionType.PERCENTAGE)
+        self.type_box.addItem("Montant fixe (FCFA)", PromotionType.FIXED)
 
         self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Ex: Promo weekend")
         self.value_input = QLineEdit()
+        self.value_input.setPlaceholderText("Ex: 10")
 
-        form = QFormLayout(self)
-        form.setSpacing(10)
-        form.addRow("Nom promotion", self.name_input)
-        form.addRow("Produit", self.product_box)
-        form.addRow("Type", self.type_box)
-        form.addRow("Valeur", self.value_input)
+        form.addWidget(QLabel("Nom de la promotion"))
+        form.addWidget(self.name_input)
+        form.addWidget(QLabel("Produit concerne"))
+        form.addWidget(self.product_box)
+        form.addWidget(QLabel("Type de remise"))
+        form.addWidget(self.type_box)
+        form.addWidget(QLabel("Valeur"))
+        form.addWidget(self.value_input)
+        form.addStretch()
 
+        main_layout.addWidget(form_widget, 1)
+
+        # Footer
+        footer = QWidget()
+        footer.setStyleSheet("background: #FFFFFF; border-top: 1px solid #E2E8F0;")
+        f_layout = QHBoxLayout(footer)
+        f_layout.setContentsMargins(28, 16, 28, 16)
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.setStyleSheet("background: #F1F5F9; color: #475569; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600;")
+        cancel_btn.clicked.connect(self.reject)
         save_btn = QPushButton("Creer la promotion")
+        save_btn.setStyleSheet("background: #2563EB; color: #FFFFFF; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600;")
         save_btn.clicked.connect(self.accept)
-        form.addWidget(save_btn)
+        f_layout.addStretch()
+        f_layout.addWidget(cancel_btn)
+        f_layout.addWidget(save_btn)
+        main_layout.addWidget(footer)
 
 
 class UserCreateDialog(QDialog):
@@ -143,36 +413,99 @@ class UserCreateDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Creer un utilisateur")
         self.setModal(True)
-        self.resize(400, 340)
+        self.setMinimumSize(500, 520)
+        self.setStyleSheet("""
+            QDialog { background: #F8FAFC; }
+            QLabel { color: #374151; font-size: 13px; font-weight: 500; }
+            QLineEdit, QComboBox {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+            QLineEdit:focus, QComboBox:focus { border: 2px solid #2563EB; }
+        """)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Header
+        header = QWidget()
+        header.setStyleSheet("background: #FFFFFF; border-bottom: 1px solid #E2E8F0;")
+        h_layout = QVBoxLayout(header)
+        h_layout.setContentsMargins(28, 24, 28, 20)
+        title = QLabel("Nouvel utilisateur")
+        title.setStyleSheet("font-size: 20px; font-weight: 700; color: #0F172A;")
+        h_layout.addWidget(title)
+        main_layout.addWidget(header)
+
+        # Scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: #F8FAFC; border: none; }")
+
+        form_widget = QWidget()
+        form = QVBoxLayout(form_widget)
+        form.setContentsMargins(28, 24, 28, 24)
+        form.setSpacing(16)
 
         self.username_input = QLineEdit()
-        self.password_input = QLineEdit(); self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.username_input.setPlaceholderText("Ex: jdupont")
+        self.password_input = QLineEdit()
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.setPlaceholderText("Mot de passe securise")
         self.nom_input = QLineEdit()
+        self.nom_input.setPlaceholderText("Ex: Dupont")
         self.prenom_input = QLineEdit()
+        self.prenom_input.setPlaceholderText("Ex: Jean")
         self.code_input = QLineEdit()
+        self.code_input.setPlaceholderText("Ex: EMP001")
         self.phone_input = QLineEdit()
+        self.phone_input.setPlaceholderText("Ex: +221 77 123 45 67")
 
         self.role_box = QComboBox()
-        self.role_box.addItem("Admin", UserRole.ADMIN)
+        self.role_box.addItem("Administrateur", UserRole.ADMIN)
         self.role_box.addItem("Superviseur", UserRole.SUPERVISOR)
         self.role_box.addItem("Caissier", UserRole.CASHIER)
 
-        form = QFormLayout(self)
-        form.setSpacing(10)
-        form.addRow("Username", self.username_input)
-        form.addRow("Mot de passe", self.password_input)
-        form.addRow("Nom", self.nom_input)
-        form.addRow("Prenom", self.prenom_input)
-        form.addRow("Code employe", self.code_input)
-        form.addRow("Telephone", self.phone_input)
-        form.addRow("Role", self.role_box)
+        for lbl, widget in [
+            ("Nom d'utilisateur", self.username_input),
+            ("Mot de passe", self.password_input),
+            ("Nom de famille", self.nom_input),
+            ("Prenom", self.prenom_input),
+            ("Code employe", self.code_input),
+            ("Telephone", self.phone_input),
+            ("Role", self.role_box),
+        ]:
+            form.addWidget(QLabel(lbl))
+            form.addWidget(widget)
+        form.addStretch()
 
+        scroll.setWidget(form_widget)
+        main_layout.addWidget(scroll, 1)
+
+        # Footer
+        footer = QWidget()
+        footer.setStyleSheet("background: #FFFFFF; border-top: 1px solid #E2E8F0;")
+        f_layout = QHBoxLayout(footer)
+        f_layout.setContentsMargins(28, 16, 28, 16)
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.setStyleSheet("background: #F1F5F9; color: #475569; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600;")
+        cancel_btn.clicked.connect(self.reject)
         save_btn = QPushButton("Creer l'utilisateur")
+        save_btn.setStyleSheet("background: #2563EB; color: #FFFFFF; border: none; border-radius: 8px; padding: 12px 24px; font-weight: 600;")
         save_btn.clicked.connect(self.accept)
-        form.addWidget(save_btn)
+        f_layout.addStretch()
+        f_layout.addWidget(cancel_btn)
+        f_layout.addWidget(save_btn)
+        main_layout.addWidget(footer)
 
 
-# ── Main dashboard ─────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN DASHBOARD - Interface principale
+# ══════════════════════════════════════════════════════════════════════════════
 
 class AdminDashboard(QWidget):
     def __init__(self, user: User) -> None:
@@ -180,407 +513,821 @@ class AdminDashboard(QWidget):
         self.user = user
         self._pos_windows: list[POSScreen] = []
         self.setWindowTitle("MOKAT MARKET — Administration")
-        self.resize(1360, 840)
+        self.resize(1400, 900)
+        self.setStyleSheet("background: #F1F5F9;")
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Sidebar ──────────────────────────────────────────
-        sidebar_container = QWidget()
-        sidebar_container.setObjectName("LoginRoot")
-        sidebar_container.setFixedWidth(220)
-        sidebar_v = QVBoxLayout(sidebar_container)
-        sidebar_v.setContentsMargins(0, 0, 0, 0)
-        sidebar_v.setSpacing(0)
+        # ══════════════════════════════════════════════════════════════════════
+        # SIDEBAR - Navigation gauche
+        # ══════════════════════════════════════════════════════════════════════
+        sidebar = QWidget()
+        sidebar.setFixedWidth(260)
+        sidebar.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #0F172A, stop:1 #1E293B);
+            }
+        """)
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
 
-        # Branding header
-        brand_widget = QWidget()
-        brand_widget.setStyleSheet("background: #0F172A; border: none;")
-        brand_layout = QVBoxLayout(brand_widget)
-        brand_layout.setContentsMargins(20, 22, 20, 16)
-        brand_lbl = QLabel("MOKAT MARKET")
-        brand_lbl.setStyleSheet(
-            "color: #2563EB; font-size: 13px; font-weight: 800;"
-            "letter-spacing: 2px; background: transparent;"
-        )
-        role_lbl = QLabel("Administration")
-        role_lbl.setStyleSheet(
-            "color: #475569; font-size: 11px; background: transparent; margin-top: 2px;"
-        )
-        brand_layout.addWidget(brand_lbl)
-        brand_layout.addWidget(role_lbl)
+        # Logo / Brand
+        brand = QWidget()
+        brand.setStyleSheet("background: transparent;")
+        brand_layout = QHBoxLayout(brand)
+        brand_layout.setContentsMargins(24, 28, 24, 28)
+        brand_layout.setSpacing(12)
 
-        nav_label = QLabel("NAVIGATION")
-        nav_label.setStyleSheet(
-            "color: #334155; font-size: 10px; font-weight: 700;"
-            "letter-spacing: 1.2px; padding: 14px 20px 6px 20px;"
-            "background: #0F172A; border: none;"
-        )
+        logo_circle = QLabel("M")
+        logo_circle.setFixedSize(42, 42)
+        logo_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_circle.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #3B82F6, stop:1 #1D4ED8);
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: 800;
+            border-radius: 10px;
+        """)
+        brand_text = QVBoxLayout()
+        brand_text.setSpacing(2)
+        brand_name = QLabel("MOKAT")
+        brand_name.setStyleSheet("color: #FFFFFF; font-size: 16px; font-weight: 800; letter-spacing: 1px; background: transparent;")
+        brand_tagline = QLabel("MARKET")
+        brand_tagline.setStyleSheet("color: #3B82F6; font-size: 11px; font-weight: 600; letter-spacing: 2px; background: transparent;")
+        brand_text.addWidget(brand_name)
+        brand_text.addWidget(brand_tagline)
+        brand_layout.addWidget(logo_circle)
+        brand_layout.addLayout(brand_text)
+        brand_layout.addStretch()
+        sidebar_layout.addWidget(brand)
 
+        # Navigation header
+        nav_header = QLabel("MENU PRINCIPAL")
+        nav_header.setStyleSheet("""
+            color: #64748B;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 20px 24px 12px 24px;
+            background: transparent;
+        """)
+        sidebar_layout.addWidget(nav_header)
+
+        # Menu items
         self.menu = QListWidget()
-        self.menu.setObjectName("Sidebar")
-        self.menu.setFixedWidth(220)
+        self.menu.setStyleSheet("""
+            QListWidget {
+                background: transparent;
+                border: none;
+                outline: none;
+                padding: 0 12px;
+            }
+            QListWidget::item {
+                color: #94A3B8;
+                background: transparent;
+                border-radius: 10px;
+                padding: 14px 16px;
+                margin: 2px 0;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QListWidget::item:hover {
+                background: rgba(59, 130, 246, 0.1);
+                color: #E2E8F0;
+            }
+            QListWidget::item:selected {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3B82F6, stop:1 #2563EB);
+                color: #FFFFFF;
+                font-weight: 600;
+            }
+        """)
         self._populate_sidebar()
+        sidebar_layout.addWidget(self.menu, 1)
 
-        # Bottom user info
+        # User footer
         user_footer = QWidget()
-        user_footer.setStyleSheet("background: #0F172A; border: none;")
+        user_footer.setStyleSheet("background: rgba(15, 23, 42, 0.5); border-top: 1px solid #1E293B;")
         uf_layout = QHBoxLayout(user_footer)
-        uf_layout.setContentsMargins(16, 14, 16, 20)
-        uf_layout.setSpacing(10)
+        uf_layout.setContentsMargins(20, 16, 20, 20)
+        uf_layout.setSpacing(12)
+
         avatar = QLabel(user.prenom[0].upper() if user.prenom else "A")
-        avatar.setFixedSize(34, 34)
+        avatar.setFixedSize(40, 40)
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        avatar.setStyleSheet(
-            "background: #1E40AF; color: #FFFFFF; border-radius: 17px;"
-            "font-size: 13px; font-weight: 700;"
-        )
-        name_v = QVBoxLayout()
-        name_v.setSpacing(0)
-        name_lbl = QLabel(f"{user.prenom} {user.nom}")
-        name_lbl.setStyleSheet("color: #E2E8F0; font-size: 12px; font-weight: 600; background: transparent;")
-        role_badge = QLabel("Administrateur")
-        role_badge.setStyleSheet("color: #475569; font-size: 10px; background: transparent;")
-        name_v.addWidget(name_lbl)
-        name_v.addWidget(role_badge)
+        avatar.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #10B981, stop:1 #059669);
+            color: #FFFFFF;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+        """)
+
+        user_info = QVBoxLayout()
+        user_info.setSpacing(2)
+        user_name = QLabel(f"{user.prenom} {user.nom}")
+        user_name.setStyleSheet("color: #F1F5F9; font-size: 13px; font-weight: 600; background: transparent;")
+        user_role = QLabel("Administrateur")
+        user_role.setStyleSheet("color: #64748B; font-size: 11px; background: transparent;")
+        user_info.addWidget(user_name)
+        user_info.addWidget(user_role)
+
+        logout_btn = QPushButton("Deconnexion")
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #EF4444;
+                border: 1px solid #EF4444;
+                border-radius: 6px;
+                padding: 6px 12px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #EF4444;
+                color: #FFFFFF;
+            }
+        """)
+        logout_btn.clicked.connect(self.close)
+
         uf_layout.addWidget(avatar)
-        uf_layout.addLayout(name_v)
-        uf_layout.addStretch()
+        uf_layout.addLayout(user_info, 1)
+        uf_layout.addWidget(logout_btn)
+        sidebar_layout.addWidget(user_footer)
 
-        sidebar_v.addWidget(brand_widget)
-        sidebar_v.addWidget(nav_label)
-        sidebar_v.addWidget(self.menu, 1)
-        sidebar_v.addWidget(user_footer)
+        root.addWidget(sidebar)
 
-        # ── Content area ─────────────────────────────────────
-        content_container = QWidget()
-        content_v = QVBoxLayout(content_container)
-        content_v.setContentsMargins(0, 0, 0, 0)
-        content_v.setSpacing(0)
+        # ══════════════════════════════════════════════════════════════════════
+        # MAIN CONTENT
+        # ══════════════════════════════════════════════════════════════════════
+        content = QWidget()
+        content.setStyleSheet("background: #F1F5F9;")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
 
         # Topbar
         topbar = self._build_topbar()
-        content_v.addWidget(topbar)
+        content_layout.addWidget(topbar)
 
-        # Stacked pages
+        # Pages stack
         self.stack = QStackedWidget()
         self.dashboard_page = self._build_dashboard_page()
         self.products_page = self._build_products_page()
-        self.promotions_page = self._build_placeholder_page("Promotions")
-        self.users_page = self._build_placeholder_page("Utilisateurs")
+        self.promotions_page = self._build_placeholder_page("Promotions", "Gestion des promotions et remises")
+        self.users_page = self._build_placeholder_page("Utilisateurs", "Gestion des comptes utilisateurs")
         self.stock_page = self._build_stock_page()
         self.pos_page = self._build_pos_page()
-        self.reports_page = self._build_placeholder_page("Rapports")
-        self.settings_page = self._build_placeholder_page("Parametres")
+        self.reports_page = self._build_placeholder_page("Rapports", "Analyses et statistiques")
+        self.settings_page = self._build_placeholder_page("Parametres", "Configuration du systeme")
 
         for page in [
-            self.dashboard_page,
-            self.products_page,
-            self.promotions_page,
-            self.users_page,
-            self.stock_page,
-            self.pos_page,
-            self.reports_page,
-            self.settings_page,
+            self.dashboard_page, self.products_page, self.promotions_page,
+            self.users_page, self.stock_page, self.pos_page,
+            self.reports_page, self.settings_page,
         ]:
             self.stack.addWidget(page)
 
-        content_v.addWidget(self.stack, 1)
-
+        content_layout.addWidget(self.stack, 1)
         self.menu.currentRowChanged.connect(self._on_menu_changed)
         self.menu.setCurrentRow(0)
 
-        root.addWidget(sidebar_container)
-        root.addWidget(content_container, 1)
-
+        root.addWidget(content, 1)
         self.refresh_dashboard()
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
-
     def _populate_sidebar(self) -> None:
-        entries = [
-            "  Dashboard",
-            "  Produits",
-            "  Promotions",
-            "  Utilisateurs",
-            "  Stock",
-            "  Caisse",
-            "  Rapports",
-            "  Parametres",
+        items = [
+            ("Dashboard", "Vue d'ensemble"),
+            ("Produits", "Catalogue"),
+            ("Promotions", "Remises"),
+            ("Utilisateurs", "Equipe"),
+            ("Stock", "Inventaire"),
+            ("Caisse", "Point de vente"),
+            ("Rapports", "Analyses"),
+            ("Parametres", "Config"),
         ]
-        for label in entries:
-            item = QListWidgetItem(label)
-            item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        for name, _ in items:
+            item = QListWidgetItem(f"   {name}")
+            item.setSizeHint(item.sizeHint().expandedTo(item.sizeHint()))
             self.menu.addItem(item)
-
-    # ── Topbar ────────────────────────────────────────────────────────────────
 
     def _build_topbar(self) -> QWidget:
         bar = QWidget()
-        bar.setObjectName("TopBar")
-        bar.setFixedHeight(56)
+        bar.setFixedHeight(72)
+        bar.setStyleSheet("""
+            QWidget {
+                background: #FFFFFF;
+                border-bottom: 1px solid #E2E8F0;
+            }
+        """)
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(24, 0, 24, 0)
-        layout.setSpacing(12)
+        layout.setContentsMargins(32, 0, 32, 0)
+        layout.setSpacing(16)
 
+        # Search
+        search_container = QWidget()
+        search_container.setStyleSheet("background: #F8FAFC; border-radius: 12px;")
+        search_layout = QHBoxLayout(search_container)
+        search_layout.setContentsMargins(16, 0, 16, 0)
+        search_layout.setSpacing(10)
+
+        search_icon = QLabel("🔍")
+        search_icon.setStyleSheet("font-size: 14px; background: transparent;")
         self.topbar_search = QLineEdit()
-        self.topbar_search.setObjectName("SearchInput")
-        self.topbar_search.setPlaceholderText("Rechercher produit, code-barres...")
-        self.topbar_search.setFixedWidth(300)
-        self.topbar_search.setFixedHeight(34)
+        self.topbar_search.setPlaceholderText("Rechercher un produit, code-barres...")
+        self.topbar_search.setStyleSheet("""
+            QLineEdit {
+                background: transparent;
+                border: none;
+                font-size: 13px;
+                color: #374151;
+                padding: 12px 0;
+            }
+        """)
+        self.topbar_search.setFixedWidth(280)
         self.topbar_search.returnPressed.connect(self._search_products)
         self.topbar_search.textChanged.connect(self._search_products)
 
-        layout.addWidget(self.topbar_search)
+        search_layout.addWidget(search_icon)
+        search_layout.addWidget(self.topbar_search)
+        layout.addWidget(search_container)
         layout.addStretch()
 
+        # Quick actions
         refresh_btn = QPushButton("Actualiser")
-        refresh_btn.setObjectName("SecondaryButton")
-        refresh_btn.setFixedHeight(34)
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background: #F1F5F9;
+                color: #475569;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #E2E8F0; }
+        """)
         refresh_btn.clicked.connect(self.refresh_dashboard)
-
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.VLine)
-        sep.setStyleSheet("color: #E2E8F0;")
-        sep.setFixedHeight(28)
-
-        user_lbl = QLabel(f"{self.user.prenom} {self.user.nom}")
-        user_lbl.setStyleSheet("color: #374151; font-weight: 600; font-size: 13px;")
-
         layout.addWidget(refresh_btn)
-        layout.addWidget(sep)
-        layout.addWidget(user_lbl)
-        return bar
 
-    # ── Dashboard page ────────────────────────────────────────────────────────
+        # Notifications bell
+        notif_btn = QPushButton("🔔")
+        notif_btn.setFixedSize(40, 40)
+        notif_btn.setStyleSheet("""
+            QPushButton {
+                background: #F1F5F9;
+                border: none;
+                border-radius: 20px;
+                font-size: 16px;
+            }
+            QPushButton:hover { background: #E2E8F0; }
+        """)
+        layout.addWidget(notif_btn)
+
+        # User avatar in topbar
+        user_btn = QLabel(f"{self.user.prenom[0]}{self.user.nom[0]}")
+        user_btn.setFixedSize(40, 40)
+        user_btn.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        user_btn.setStyleSheet("""
+            background: #3B82F6;
+            color: #FFFFFF;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+        """)
+        layout.addWidget(user_btn)
+
+        return bar
 
     def _build_dashboard_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(20)
+        page.setStyleSheet("background: #F1F5F9;")
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: #F1F5F9; border: none; }")
+
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(24)
 
         # Page header
         header = QHBoxLayout()
-        title = QLabel("Vue d'ensemble")
-        title.setObjectName("PageTitle")
-        sub = QLabel(f"Bienvenue, {self.user.prenom} {self.user.nom}")
-        sub.setStyleSheet("color: #64748B; font-size: 13px;")
-        header.addWidget(title)
+        header_text = QVBoxLayout()
+        title = QLabel("Tableau de bord")
+        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
+        subtitle = QLabel(f"Bienvenue, {self.user.prenom}. Voici un apercu de votre activite.")
+        subtitle.setStyleSheet("font-size: 14px; color: #64748B;")
+        header_text.addWidget(title)
+        header_text.addWidget(subtitle)
+        header.addLayout(header_text)
         header.addStretch()
-        header.addWidget(sub)
+
+        # Quick action buttons
+        quick_add = QPushButton("+ Nouveau produit")
+        quick_add.setStyleSheet("""
+            QPushButton {
+                background: #2563EB;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 10px;
+                padding: 12px 24px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            QPushButton:hover { background: #1D4ED8; }
+        """)
+        quick_add.clicked.connect(self._create_product)
+        header.addWidget(quick_add)
         layout.addLayout(header)
 
-        # Stat cards row
-        cards_row = QHBoxLayout()
-        cards_row.setSpacing(16)
-        self.total_products_label = self._create_stat_card(cards_row, "Total produits", "#2563EB")
-        self.low_stock_label = self._create_stat_card(cards_row, "Rupture / stock faible", "#D97706")
-        self.active_promotions_label = self._create_stat_card(cards_row, "Promotions actives", "#16A34A")
-        self.sales_today_label = self._create_stat_card(cards_row, "Ventes du jour (FCFA)", "#7C3AED")
-        layout.addLayout(cards_row)
+        # Stat cards
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(20)
 
-        # Quick actions row
-        actions_row = QHBoxLayout()
-        actions_row.setSpacing(10)
+        self.total_products_label = self._create_stat_card(
+            cards_layout, "Total produits", "0", "#3B82F6", "📦"
+        )
+        self.low_stock_label = self._create_stat_card(
+            cards_layout, "Stock faible", "0", "#F59E0B", "⚠️"
+        )
+        self.active_promotions_label = self._create_stat_card(
+            cards_layout, "Promotions actives", "0", "#10B981", "🏷️"
+        )
+        self.sales_today_label = self._create_stat_card(
+            cards_layout, "Ventes du jour", "0 FCFA", "#8B5CF6", "💰"
+        )
+        layout.addLayout(cards_layout)
+
+        # Actions row
+        actions_card = QFrame()
+        actions_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+            }
+        """)
+        actions_layout = QVBoxLayout(actions_card)
+        actions_layout.setContentsMargins(24, 20, 24, 20)
+        actions_layout.setSpacing(16)
+
+        actions_title = QLabel("Actions rapides")
+        actions_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        actions_layout.addWidget(actions_title)
+
+        buttons_row = QHBoxLayout()
+        buttons_row.setSpacing(12)
+
         self.search_input = QLineEdit()
-        self.search_input.setObjectName("SearchInput")
-        self.search_input.setPlaceholderText("Recherche produit: nom / code-barres / reference...")
+        self.search_input.setPlaceholderText("Rechercher un produit...")
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                background: #F8FAFC;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                padding: 12px 16px;
+                font-size: 13px;
+            }
+            QLineEdit:focus { border: 2px solid #3B82F6; }
+        """)
         self.search_input.returnPressed.connect(self._search_products)
         self.search_input.textChanged.connect(self._search_products)
-        add_product_btn = QPushButton("+ Produit")
-        add_product_btn.clicked.connect(self._create_product)
-        add_promo_btn = QPushButton("+ Promotion")
-        add_promo_btn.clicked.connect(self._create_promotion)
-        add_user_btn = QPushButton("+ Utilisateur")
-        add_user_btn.clicked.connect(self._create_user)
-        open_pos_btn = QPushButton("Ouvrir Caisse")
-        open_pos_btn.setObjectName("SuccessButton")
-        open_pos_btn.clicked.connect(self._open_pos_screen)
 
-        actions_row.addWidget(self.search_input, 1)
-        actions_row.addWidget(add_product_btn)
-        actions_row.addWidget(add_promo_btn)
-        actions_row.addWidget(add_user_btn)
-        actions_row.addWidget(open_pos_btn)
-        layout.addLayout(actions_row)
+        for text, handler, style in [
+            ("+ Produit", self._create_product, "primary"),
+            ("+ Promotion", self._create_promotion, "secondary"),
+            ("+ Utilisateur", self._create_user, "secondary"),
+            ("Ouvrir Caisse", self._open_pos_screen, "success"),
+        ]:
+            btn = QPushButton(text)
+            if style == "primary":
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: #2563EB; color: #FFFFFF; border: none;
+                        border-radius: 10px; padding: 12px 20px; font-weight: 600;
+                    }
+                    QPushButton:hover { background: #1D4ED8; }
+                """)
+            elif style == "success":
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: #10B981; color: #FFFFFF; border: none;
+                        border-radius: 10px; padding: 12px 20px; font-weight: 600;
+                    }
+                    QPushButton:hover { background: #059669; }
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: #F1F5F9; color: #475569; border: none;
+                        border-radius: 10px; padding: 12px 20px; font-weight: 600;
+                    }
+                    QPushButton:hover { background: #E2E8F0; }
+                """)
+            btn.clicked.connect(handler)
+            buttons_row.addWidget(btn)
+
+        buttons_row.insertWidget(0, self.search_input, 1)
+        actions_layout.addLayout(buttons_row)
+        layout.addWidget(actions_card)
 
         # Search results table
-        self.search_table = QTableWidget(0, 7)
-        self.search_table.setHorizontalHeaderLabels(["ID", "Barcode", "Ref", "Nom", "Marque", "Prix", "Stock"])
-        self.search_table.setAlternatingRowColors(True)
-        self.search_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.search_table.verticalHeader().setVisible(False)
-        layout.addWidget(self.search_table, 1)
+        table_card = QFrame()
+        table_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+            }
+        """)
+        table_layout = QVBoxLayout(table_card)
+        table_layout.setContentsMargins(24, 20, 24, 20)
 
-        # Notifications + activity
+        table_header = QLabel("Resultats de recherche")
+        table_header.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        table_layout.addWidget(table_header)
+
+        self.search_table = QTableWidget(0, 7)
+        self.search_table.setHorizontalHeaderLabels(["ID", "Code-barres", "Ref", "Nom", "Marque", "Prix", "Stock"])
+        self._style_table(self.search_table)
+        table_layout.addWidget(self.search_table)
+        layout.addWidget(table_card, 1)
+
+        # Bottom row: notifications + activity
         bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(16)
-        self.notifications_box = QTextEdit(); self.notifications_box.setReadOnly(True); self.notifications_box.setMaximumHeight(160)
-        self.activity_box = QTextEdit(); self.activity_box.setReadOnly(True); self.activity_box.setMaximumHeight(160)
-        notif_group = QGroupBox("Alertes systeme")
-        QVBoxLayout(notif_group).addWidget(self.notifications_box)
-        activity_group = QGroupBox("Activite recente")
-        QVBoxLayout(activity_group).addWidget(self.activity_box)
-        bottom_row.addWidget(notif_group)
-        bottom_row.addWidget(activity_group)
+        bottom_row.setSpacing(20)
+
+        for title_text, widget_name in [("Alertes systeme", "notifications"), ("Activite recente", "activity")]:
+            card = QFrame()
+            card.setStyleSheet("""
+                QFrame {
+                    background: #FFFFFF;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 16px;
+                }
+            """)
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(24, 20, 24, 20)
+            card_title = QLabel(title_text)
+            card_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+            card_layout.addWidget(card_title)
+            text_edit = QTextEdit()
+            text_edit.setReadOnly(True)
+            text_edit.setMaximumHeight(140)
+            text_edit.setStyleSheet("""
+                QTextEdit {
+                    background: #F8FAFC;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 10px;
+                    padding: 12px;
+                    font-size: 12px;
+                    color: #475569;
+                }
+            """)
+            card_layout.addWidget(text_edit)
+            if widget_name == "notifications":
+                self.notifications_box = text_edit
+            else:
+                self.activity_box = text_edit
+            bottom_row.addWidget(card)
+
         layout.addLayout(bottom_row)
 
+        scroll.setWidget(content)
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.addWidget(scroll)
         return page
 
-    def _create_stat_card(self, row: QHBoxLayout, title: str, color: str) -> QLabel:
+    def _create_stat_card(self, parent_layout: QHBoxLayout, title: str, value: str, color: str, icon: str) -> QLabel:
         card = QFrame()
-        card.setObjectName("Card")
-        card.setMinimumWidth(180)
+        card.setMinimumWidth(200)
+        card.setStyleSheet(f"""
+            QFrame {{
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+                border-left: 4px solid {color};
+            }}
+        """)
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(20, 16, 20, 16)
-        card_layout.setSpacing(4)
+        card_layout.setContentsMargins(20, 20, 20, 20)
+        card_layout.setSpacing(8)
 
-        bar = QFrame()
-        bar.setFixedHeight(3)
-        bar.setStyleSheet(f"background: {color}; border-radius: 2px;")
-        card_layout.addWidget(bar)
+        top_row = QHBoxLayout()
+        icon_lbl = QLabel(icon)
+        icon_lbl.setStyleSheet("font-size: 24px; background: transparent;")
+        top_row.addWidget(icon_lbl)
+        top_row.addStretch()
+        card_layout.addLayout(top_row)
 
-        lbl_title = QLabel(title)
-        lbl_title.setStyleSheet(
-            "font-size: 11px; font-weight: 700; color: #64748B;"
-            "letter-spacing: 0.7px; text-transform: uppercase; margin-top: 8px;"
-        )
-        card_layout.addWidget(lbl_title)
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;")
+        card_layout.addWidget(title_lbl)
 
-        value = QLabel("0")
-        value.setStyleSheet(f"font-size: 30px; font-weight: 800; color: {color};")
-        card_layout.addWidget(value)
-        card_layout.addStretch()
+        value_lbl = QLabel(value)
+        value_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {color};")
+        card_layout.addWidget(value_lbl)
 
-        row.addWidget(card)
-        return value
+        parent_layout.addWidget(card)
+        return value_lbl
 
-    # ── Products page ─────────────────────────────────────────────────────────
+    def _style_table(self, table: QTableWidget) -> None:
+        table.setAlternatingRowColors(True)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.verticalHeader().setVisible(False)
+        table.setStyleSheet("""
+            QTableWidget {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                gridline-color: #F1F5F9;
+            }
+            QTableWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #F1F5F9;
+            }
+            QTableWidget::item:selected {
+                background: #EFF6FF;
+                color: #1E40AF;
+            }
+            QTableWidget::item:alternate {
+                background: #F8FAFC;
+            }
+            QHeaderView::section {
+                background: #F8FAFC;
+                color: #64748B;
+                font-weight: 700;
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding: 14px 12px;
+                border: none;
+                border-bottom: 2px solid #E2E8F0;
+            }
+        """)
 
     def _build_products_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(16)
+        page.setStyleSheet("background: #F1F5F9;")
 
-        header = QLabel("Gestion des produits")
-        header.setObjectName("PageTitle")
-        layout.addWidget(header)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: #F1F5F9; border: none; }")
 
-        actions = QHBoxLayout(); actions.setSpacing(10)
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(20)
+
+        # Header
+        header = QHBoxLayout()
+        title = QLabel("Gestion des produits")
+        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
+        header.addWidget(title)
+        header.addStretch()
+        layout.addLayout(header)
+
+        # Actions card
+        actions_card = QFrame()
+        actions_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        actions_layout = QHBoxLayout(actions_card)
+        actions_layout.setContentsMargins(20, 16, 20, 16)
+        actions_layout.setSpacing(12)
+
         self.products_search_input = QLineEdit()
-        self.products_search_input.setObjectName("SearchInput")
         self.products_search_input.setPlaceholderText("Rechercher un produit...")
+        self.products_search_input.setStyleSheet("""
+            QLineEdit {
+                background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;
+                padding: 12px 16px; font-size: 13px;
+            }
+            QLineEdit:focus { border: 2px solid #3B82F6; }
+        """)
         self.products_search_input.textChanged.connect(self._refresh_products_table)
-        btn_add = QPushButton("+ Ajouter"); btn_add.clicked.connect(self._create_product)
-        btn_toggle = QPushButton("Activer / Desactiver"); btn_toggle.setObjectName("SecondaryButton"); btn_toggle.clicked.connect(self._toggle_selected_product_status)
-        btn_delete = QPushButton("Supprimer"); btn_delete.setObjectName("DangerButton"); btn_delete.clicked.connect(self._delete_selected_product)
-        actions.addWidget(self.products_search_input, 1)
-        actions.addWidget(btn_add); actions.addWidget(btn_toggle); actions.addWidget(btn_delete)
-        layout.addLayout(actions)
+
+        btn_add = QPushButton("+ Ajouter")
+        btn_add.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 10px; padding: 12px 20px; font-weight: 600; } QPushButton:hover { background: #1D4ED8; }")
+        btn_add.clicked.connect(self._create_product)
+
+        btn_toggle = QPushButton("Activer / Desactiver")
+        btn_toggle.setStyleSheet("QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 10px; padding: 12px 20px; font-weight: 600; } QPushButton:hover { background: #E2E8F0; }")
+        btn_toggle.clicked.connect(self._toggle_selected_product_status)
+
+        btn_delete = QPushButton("Supprimer")
+        btn_delete.setStyleSheet("QPushButton { background: #FEE2E2; color: #DC2626; border: none; border-radius: 10px; padding: 12px 20px; font-weight: 600; } QPushButton:hover { background: #FECACA; }")
+        btn_delete.clicked.connect(self._delete_selected_product)
+
+        actions_layout.addWidget(self.products_search_input, 1)
+        actions_layout.addWidget(btn_add)
+        actions_layout.addWidget(btn_toggle)
+        actions_layout.addWidget(btn_delete)
+        layout.addWidget(actions_card)
+
+        # Table card
+        table_card = QFrame()
+        table_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        table_layout = QVBoxLayout(table_card)
+        table_layout.setContentsMargins(20, 20, 20, 20)
 
         self.products_table = QTableWidget(0, 9)
-        self.products_table.setHorizontalHeaderLabels(["ID", "Barcode", "Ref", "Nom", "Marque", "Prix vente", "Stock", "Stock min", "Statut"])
-        self.products_table.setAlternatingRowColors(True)
-        self.products_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.products_table.verticalHeader().setVisible(False)
-        layout.addWidget(self.products_table, 1)
-        return page
+        self.products_table.setHorizontalHeaderLabels(["ID", "Code-barres", "Ref", "Nom", "Marque", "Prix vente", "Stock", "Stock min", "Statut"])
+        self._style_table(self.products_table)
+        table_layout.addWidget(self.products_table)
+        layout.addWidget(table_card, 1)
 
-    # ── Stock page ────────────────────────────────────────────────────────────
+        scroll.setWidget(content)
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.addWidget(scroll)
+        return page
 
     def _build_stock_page(self) -> QWidget:
         page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(16)
+        page.setStyleSheet("background: #F1F5F9;")
 
-        header = QLabel("Gestion du stock")
-        header.setObjectName("PageTitle")
-        layout.addWidget(header)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: #F1F5F9; border: none; }")
 
-        actions = QHBoxLayout(); actions.setSpacing(10)
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(20)
+
+        title = QLabel("Gestion du stock")
+        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
+        layout.addWidget(title)
+
+        # Actions
+        actions_card = QFrame()
+        actions_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        actions_layout = QHBoxLayout(actions_card)
+        actions_layout.setContentsMargins(20, 16, 20, 16)
+        actions_layout.setSpacing(12)
+
         self.stock_search_input = QLineEdit()
-        self.stock_search_input.setObjectName("SearchInput")
-        self.stock_search_input.setPlaceholderText("Rechercher un produit...")
+        self.stock_search_input.setPlaceholderText("Rechercher...")
+        self.stock_search_input.setStyleSheet("QLineEdit { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 16px; } QLineEdit:focus { border: 2px solid #3B82F6; }")
         self.stock_search_input.textChanged.connect(self._refresh_stock_table)
-        btn_entry = QPushButton("+ Entree stock"); btn_entry.setObjectName("SuccessButton"); btn_entry.clicked.connect(lambda: self._record_stock_movement(StockMovementType.ENTRY))
-        btn_loss = QPushButton("Sortie / Perte"); btn_loss.setObjectName("DangerButton"); btn_loss.clicked.connect(lambda: self._record_stock_movement(StockMovementType.LOSS))
-        btn_adjust = QPushButton("Ajustement"); btn_adjust.setObjectName("SecondaryButton"); btn_adjust.clicked.connect(lambda: self._record_stock_movement(StockMovementType.ADJUSTMENT))
-        btn_restock = QPushButton("Renouveler"); btn_restock.clicked.connect(self._restock_selected_product)
-        btn_exact = QPushButton("Inventaire manuel"); btn_exact.setObjectName("SecondaryButton"); btn_exact.clicked.connect(self._set_selected_stock)
-        actions.addWidget(self.stock_search_input, 1)
-        actions.addWidget(btn_entry); actions.addWidget(btn_loss); actions.addWidget(btn_adjust); actions.addWidget(btn_restock); actions.addWidget(btn_exact)
-        layout.addLayout(actions)
+
+        btn_entry = QPushButton("+ Entree")
+        btn_entry.setStyleSheet("QPushButton { background: #10B981; color: #FFFFFF; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; } QPushButton:hover { background: #059669; }")
+        btn_entry.clicked.connect(lambda: self._record_stock_movement(StockMovementType.ENTRY))
+
+        btn_loss = QPushButton("Sortie / Perte")
+        btn_loss.setStyleSheet("QPushButton { background: #FEE2E2; color: #DC2626; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; } QPushButton:hover { background: #FECACA; }")
+        btn_loss.clicked.connect(lambda: self._record_stock_movement(StockMovementType.LOSS))
+
+        btn_adjust = QPushButton("Ajustement")
+        btn_adjust.setStyleSheet("QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; } QPushButton:hover { background: #E2E8F0; }")
+        btn_adjust.clicked.connect(lambda: self._record_stock_movement(StockMovementType.ADJUSTMENT))
+
+        btn_restock = QPushButton("Renouveler")
+        btn_restock.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; } QPushButton:hover { background: #1D4ED8; }")
+        btn_restock.clicked.connect(self._restock_selected_product)
+
+        btn_exact = QPushButton("Inventaire")
+        btn_exact.setStyleSheet("QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; } QPushButton:hover { background: #E2E8F0; }")
+        btn_exact.clicked.connect(self._set_selected_stock)
+
+        actions_layout.addWidget(self.stock_search_input, 1)
+        for btn in [btn_entry, btn_loss, btn_adjust, btn_restock, btn_exact]:
+            actions_layout.addWidget(btn)
+        layout.addWidget(actions_card)
+
+        # Stock table
+        table_card = QFrame()
+        table_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        table_layout = QVBoxLayout(table_card)
+        table_layout.setContentsMargins(20, 20, 20, 20)
 
         self.stock_table = QTableWidget(0, 9)
-        self.stock_table.setHorizontalHeaderLabels(["ID", "Barcode", "Nom", "Stock", "Min", "Max", "Unite", "Expiration", "Statut"])
-        self.stock_table.setAlternatingRowColors(True)
-        self.stock_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.stock_table.verticalHeader().setVisible(False)
-        layout.addWidget(self.stock_table, 1)
+        self.stock_table.setHorizontalHeaderLabels(["ID", "Code-barres", "Nom", "Stock", "Min", "Max", "Unite", "Expiration", "Statut"])
+        self._style_table(self.stock_table)
+        table_layout.addWidget(self.stock_table)
+        layout.addWidget(table_card, 1)
 
-        group = QGroupBox("Historique des mouvements de stock")
-        g = QVBoxLayout(group)
+        # History
+        history_card = QFrame()
+        history_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        history_layout = QVBoxLayout(history_card)
+        history_layout.setContentsMargins(20, 20, 20, 20)
+
+        history_title = QLabel("Historique des mouvements")
+        history_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        history_layout.addWidget(history_title)
+
         self.stock_history_table = QTableWidget(0, 6)
         self.stock_history_table.setHorizontalHeaderLabels(["Date", "Produit", "Type", "Quantite", "Raison", "Utilisateur"])
-        self.stock_history_table.setAlternatingRowColors(True)
-        self.stock_history_table.verticalHeader().setVisible(False)
-        g.addWidget(self.stock_history_table)
-        layout.addWidget(group)
-        return page
+        self._style_table(self.stock_history_table)
+        self.stock_history_table.setMaximumHeight(200)
+        history_layout.addWidget(self.stock_history_table)
+        layout.addWidget(history_card)
 
-    # ── POS page ──────────────────────────────────────────────────────────────
+        scroll.setWidget(content)
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.addWidget(scroll)
+        return page
 
     def _build_pos_page(self) -> QWidget:
         page = QWidget()
+        page.setStyleSheet("background: #F1F5F9;")
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(16)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(24)
 
-        header = QLabel("Interface Caisse")
-        header.setObjectName("PageTitle")
-        layout.addWidget(header)
+        title = QLabel("Interface Caisse")
+        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
+        layout.addWidget(title)
 
-        card = QFrame(); card.setObjectName("Card")
+        card = QFrame()
+        card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(24, 24, 24, 24)
-        card_layout.setSpacing(14)
+        card_layout.setContentsMargins(32, 32, 32, 32)
+        card_layout.setSpacing(20)
 
-        info = QLabel("Ouvrez l'ecran de caisse tactile pour scanner les produits, encaisser et imprimer les tickets.")
-        info.setStyleSheet("color: #64748B; font-size: 13px;")
+        icon_lbl = QLabel("🛒")
+        icon_lbl.setStyleSheet("font-size: 48px;")
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(icon_lbl)
+
+        info = QLabel("Ouvrez l'interface de caisse tactile pour scanner les produits,\nencaisser les clients et imprimer les tickets.")
+        info.setStyleSheet("color: #64748B; font-size: 15px; text-align: center;")
+        info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         info.setWordWrap(True)
         card_layout.addWidget(info)
 
         open_btn = QPushButton("Ouvrir l'interface de caisse")
-        open_btn.setObjectName("SuccessButton")
-        open_btn.setMinimumHeight(48)
+        open_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #10B981, stop:1 #059669);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 12px;
+                padding: 16px 32px;
+                font-size: 16px;
+                font-weight: 700;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #059669, stop:1 #047857);
+            }
+        """)
         open_btn.clicked.connect(self._open_pos_screen)
-        card_layout.addWidget(open_btn)
+        card_layout.addWidget(open_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         layout.addWidget(card)
-        layout.addStretch(1)
-        return page
-
-    # ── Placeholder page ──────────────────────────────────────────────────────
-
-    def _build_placeholder_page(self, module_name: str) -> QWidget:
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(28, 24, 28, 24)
-        layout.setSpacing(16)
-        lbl = QLabel(module_name)
-        lbl.setObjectName("PageTitle")
-        layout.addWidget(lbl)
-        sub = QLabel("Ce module est en cours d'implementation.")
-        sub.setStyleSheet("color: #94A3B8; font-size: 13px;")
-        layout.addWidget(sub)
         layout.addStretch()
         return page
 
-    # ── Event handlers ────────────────────────────────────────────────────────
+    def _build_placeholder_page(self, module_name: str, description: str) -> QWidget:
+        page = QWidget()
+        page.setStyleSheet("background: #F1F5F9;")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(16)
+
+        title = QLabel(module_name)
+        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
+        layout.addWidget(title)
+
+        card = QFrame()
+        card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(32, 32, 32, 32)
+        card_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        icon = QLabel("🚧")
+        icon.setStyleSheet("font-size: 48px;")
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(icon)
+
+        text = QLabel(f"{description}\n\nCe module est en cours de developpement.")
+        text.setStyleSheet("color: #64748B; font-size: 14px; text-align: center;")
+        text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(text)
+
+        layout.addWidget(card)
+        layout.addStretch()
+        return page
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # EVENT HANDLERS
+    # ══════════════════════════════════════════════════════════════════════════
 
     def _on_menu_changed(self, row: int) -> None:
         if row < 0:
@@ -629,15 +1376,15 @@ class AdminDashboard(QWidget):
 
         notifications: list[str] = []
         if low_stock > 0:
-            notifications.append(f"[!] {low_stock} produit(s) sous le stock minimum.")
+            notifications.append(f"⚠️ {low_stock} produit(s) sous le stock minimum.")
         expired = [p for p in products if p.expiration_date and p.expiration_date <= date.today()]
         near_exp = [p for p in products if p.expiration_date and 0 <= (p.expiration_date - date.today()).days <= 7]
         if expired:
-            notifications.append(f"[X] {len(expired)} produit(s) expire(s).")
+            notifications.append(f"❌ {len(expired)} produit(s) expire(s).")
         if near_exp:
-            notifications.append(f"[i] {len(near_exp)} produit(s) expirent sous 7 jours.")
+            notifications.append(f"ℹ️ {len(near_exp)} produit(s) expirent sous 7 jours.")
         if not notifications:
-            notifications.append("[OK] Aucun incident critique detecte.")
+            notifications.append("✅ Aucun incident critique detecte.")
         self.notifications_box.setPlainText("\n".join(notifications))
 
     def _load_recent_activity(self) -> None:
@@ -647,11 +1394,11 @@ class AdminDashboard(QWidget):
             promotions = PromotionRepository(session).latest_created(5)
             users = UserRepository(session).latest_created(5)
             for p in products:
-                entries.append((f"Produit ajoute: {p.name}", p.created_at))
+                entries.append((f"📦 Produit ajoute: {p.name}", p.created_at))
             for promo in promotions:
-                entries.append((f"Promotion creee: {promo.name}", promo.created_at))
+                entries.append((f"🏷️ Promotion creee: {promo.name}", promo.created_at))
             for u in users:
-                entries.append((f"Utilisateur cree: {u.username}", u.created_at))
+                entries.append((f"👤 Utilisateur cree: {u.username}", u.created_at))
 
         entries.sort(key=lambda x: x[1], reverse=True)
         self.activity_box.setPlainText(
@@ -689,7 +1436,7 @@ class AdminDashboard(QWidget):
 
         self.stock_table.setRowCount(len(products))
         for row, p in enumerate(products):
-            status = "RUPTURE" if p.stock_quantity <= 0 else ("FAIBLE" if p.stock_quantity <= p.stock_min else "NORMAL")
+            status = "🔴 RUPTURE" if p.stock_quantity <= 0 else ("🟡 FAIBLE" if p.stock_quantity <= p.stock_min else "🟢 OK")
             expiration = p.expiration_date.isoformat() if p.expiration_date else "-"
             for col, val in enumerate([p.id, p.barcode, p.name, p.stock_quantity, p.stock_min, p.stock_max, p.unit, expiration, status]):
                 self.stock_table.setItem(row, col, QTableWidgetItem(str(val)))
@@ -922,10 +1669,17 @@ class AdminDashboard(QWidget):
                 return
             old_qty = product.stock_quantity
             if not repo.update_stock(product_id, qty):
-                QMessageBox.warning(self, "Erreur", "Mise a jour impossible")
+                QMessageBox.warning(self, "Erreur", "Impossible de mettre a jour le stock")
                 return
-            diff = abs(qty - old_qty)
-            session.add(StockMovement(product_id=product_id, type=StockMovementType.ADJUSTMENT, quantity=diff, reason="inventaire manuel", user_id=self.user.id))
+            session.add(
+                StockMovement(
+                    product_id=product_id,
+                    type=StockMovementType.ADJUSTMENT,
+                    quantity=qty - old_qty,
+                    reason=f"inventaire: {old_qty} -> {qty}",
+                    user_id=self.user.id,
+                )
+            )
             session.commit()
         self.refresh_dashboard()
 
@@ -934,10 +1688,12 @@ class AdminDashboard(QWidget):
         self.total_products_label.setText(str(stats.total_products))
         self.low_stock_label.setText(str(stats.low_stock_products))
         self.active_promotions_label.setText(str(stats.active_promotions))
-        self.sales_today_label.setText(f"{int(stats.sales_today):,}")
-        self._search_products()
+        self.sales_today_label.setText(f"{stats.sales_today:,.0f}")
         self._load_notifications()
         self._load_recent_activity()
-        self._refresh_products_table()
-        self._refresh_stock_table()
-        self._refresh_stock_history()
+        self._search_products()
+        if self.stack.currentIndex() == 1:
+            self._refresh_products_table()
+        if self.stack.currentIndex() == 4:
+            self._refresh_stock_table()
+            self._refresh_stock_history()

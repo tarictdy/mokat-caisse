@@ -466,7 +466,7 @@ class POSScreen(QWidget):
         self.hold_btn.clicked.connect(self._hold_current_sale)
         util_layout.addWidget(self.hold_btn)
 
-        self.clear_btn = QPushButton("Vider le panier")
+        self.clear_btn = QPushButton("F5  Vider le panier")
         self.clear_btn.setMinimumHeight(44)
         self.clear_btn.setStyleSheet("""
             QPushButton {
@@ -533,7 +533,7 @@ class POSScreen(QWidget):
         right_layout.addStretch()
 
         # Shortcuts hint
-        shortcuts_lbl = QLabel("F1 Especes  |  F2 Mobile  |  F3 Annuler  |  F4 Attente")
+        shortcuts_lbl = QLabel("F1 Especes | F2 Mobile | F3 Supprimer | F4 Attente | F5 Vider | F6 Scan | Ctrl+P Payer | Ctrl+1 Charger attente | Ctrl+2 Payer attente")
         shortcuts_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         shortcuts_lbl.setStyleSheet("""
             color: #94A3B8;
@@ -564,6 +564,14 @@ class POSScreen(QWidget):
         QShortcut(QKeySequence("F2"), self).activated.connect(lambda: self._open_payment(PaymentService.WAVE_CHANNEL))
         QShortcut(QKeySequence("F3"), self).activated.connect(self._remove_last_product)
         QShortcut(QKeySequence("F4"), self).activated.connect(self._hold_current_sale)
+        QShortcut(QKeySequence("F5"), self).activated.connect(self._clear_cart)
+        QShortcut(QKeySequence("F6"), self).activated.connect(self._focus_scan_input)
+        QShortcut(QKeySequence("Ctrl+P"), self).activated.connect(self._open_payment)
+        QShortcut(QKeySequence("Ctrl+H"), self).activated.connect(self._hold_current_sale)
+        QShortcut(QKeySequence("Ctrl+R"), self).activated.connect(self._remove_last_product)
+        QShortcut(QKeySequence("Ctrl+L"), self).activated.connect(self._clear_cart)
+        QShortcut(QKeySequence("Ctrl+1"), self).activated.connect(self._load_first_pending_sale)
+        QShortcut(QKeySequence("Ctrl+2"), self).activated.connect(self._pay_first_pending_sale)
 
     def _focus_scan_input(self) -> None:
         self.scan_input.setFocus()
@@ -730,6 +738,16 @@ class POSScreen(QWidget):
             self._refresh_pending_sales_panel()
 
         self._focus_scan_input()
+
+    def _load_first_pending_sale(self) -> None:
+        if not self.pending_sales:
+            return
+        self._load_pending_sale(self.pending_sales[0].ticket_id)
+
+    def _pay_first_pending_sale(self) -> None:
+        if not self.pending_sales:
+            return
+        self._pay_pending_sale(self.pending_sales[0].ticket_id)
 
     def _refresh_total(self) -> Decimal:
         total = self.sale_service.compute_total(self.cart_lines)

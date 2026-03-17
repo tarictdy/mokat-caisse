@@ -104,6 +104,22 @@ Le script:
 - vérifie les imports critiques (`sqlalchemy`, `bcrypt`, `PyQt6`)
 - peut lancer l'application
 
+## Télécharger tous les fichiers du projet (archive ZIP)
+
+Depuis le dossier `pos-supermarket`, lancez:
+
+```bash
+bash scripts/telecharger_tous_les_fichiers.sh
+```
+
+Vous pouvez aussi choisir un nom de fichier de sortie:
+
+```bash
+bash scripts/telecharger_tous_les_fichiers.sh sauvegarde-pos.zip
+```
+
+Le script génère une archive ZIP complète du projet en excluant les fichiers temporaires (`.venv`, `__pycache__`, `.pyc`, etc.).
+
 ## Dépannage Windows (erreurs que vous avez eues)
 
 ### 1) `Python est introuvable`

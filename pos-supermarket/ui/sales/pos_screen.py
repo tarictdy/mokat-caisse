@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from PyQt6.QtCore import QTimer, Qt
@@ -30,6 +32,21 @@ from ui.sales.payment_dialog import PaymentDialog
 from ui.sales.receipt_preview import ReceiptPreview
 
 
+@dataclass
+class PendingSale:
+    ticket_id: int
+    created_at: datetime
+    lines: list[CartLine]
+
+    @property
+    def total(self) -> Decimal:
+        return sum((line.total_price for line in self.lines), Decimal("0.00"))
+
+    @property
+    def item_count(self) -> int:
+        return sum(line.quantity for line in self.lines)
+
+
 class POSScreen(QWidget):
     """Interface de caisse moderne et fluide"""
     
@@ -42,7 +59,8 @@ class POSScreen(QWidget):
         self.payment_service = PaymentService()
         self.barcode_scanner = BarcodeScanner()
         self.cart_lines: list[CartLine] = []
-        self.held_sale_lines: list[CartLine] = []
+        self.pending_sales: list[PendingSale] = []
+        self.pending_sale_counter = 1
 
         self.setWindowTitle("MOKAT MARKET — Caisse")
         self.resize(1200, 800)
@@ -467,6 +485,51 @@ class POSScreen(QWidget):
         util_layout.addWidget(self.clear_btn)
 
         right_layout.addWidget(util_card)
+
+        pending_card = QFrame()
+        pending_card.setStyleSheet("""
+            QFrame {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 16px;
+            }
+        """)
+        pending_layout = QVBoxLayout(pending_card)
+        pending_layout.setContentsMargins(16, 16, 16, 16)
+        pending_layout.setSpacing(10)
+
+        pending_header = QHBoxLayout()
+        pending_title = QLabel("Ventes en attente")
+        pending_title.setStyleSheet("color: #0F172A; font-size: 13px; font-weight: 700;")
+        self.pending_count_label = QLabel("0")
+        self.pending_count_label.setStyleSheet("""
+            color: #1D4ED8;
+            background: #DBEAFE;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 8px;
+        """)
+        pending_header.addWidget(pending_title)
+        pending_header.addStretch()
+        pending_header.addWidget(self.pending_count_label)
+        pending_layout.addLayout(pending_header)
+
+        self.pending_scroll = QScrollArea()
+        self.pending_scroll.setWidgetResizable(True)
+        self.pending_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.pending_scroll.setMinimumHeight(170)
+        self.pending_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+
+        self.pending_container = QWidget()
+        self.pending_sales_layout = QVBoxLayout(self.pending_container)
+        self.pending_sales_layout.setContentsMargins(0, 0, 0, 0)
+        self.pending_sales_layout.setSpacing(8)
+        self.pending_sales_layout.addStretch()
+        self.pending_scroll.setWidget(self.pending_container)
+
+        pending_layout.addWidget(self.pending_scroll)
+        right_layout.addWidget(pending_card)
         right_layout.addStretch()
 
         # Shortcuts hint
@@ -483,6 +546,7 @@ class POSScreen(QWidget):
         root.addWidget(body, 1)
 
         self.preview = ReceiptPreview()
+        self._refresh_pending_sales_panel()
         self._install_shortcuts()
         QTimer.singleShot(0, self._focus_scan_input)
 
@@ -547,11 +611,124 @@ class POSScreen(QWidget):
     def _hold_current_sale(self) -> None:
         if not self.cart_lines:
             return
-        self.held_sale_lines = deepcopy(self.cart_lines)
+
+        pending_sale = PendingSale(
+            ticket_id=self.pending_sale_counter,
+            created_at=datetime.now(),
+            lines=deepcopy(self.cart_lines),
+        )
+        self.pending_sale_counter += 1
+        self.pending_sales.append(pending_sale)
+
         self.cart_lines = []
         self.cart_widget.load_lines(self.cart_lines)
         self._refresh_total()
+        self._refresh_pending_sales_panel()
         QMessageBox.information(self, "Vente en attente", "La vente en cours a ete mise en attente.")
+        self._focus_scan_input()
+
+    def _refresh_pending_sales_panel(self) -> None:
+        while self.pending_sales_layout.count():
+            item = self.pending_sales_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        self.pending_count_label.setText(str(len(self.pending_sales)))
+
+        if not self.pending_sales:
+            empty_label = QLabel("Aucune vente en attente")
+            empty_label.setStyleSheet("color: #94A3B8; font-size: 12px; padding: 8px;")
+            self.pending_sales_layout.addWidget(empty_label)
+            self.pending_sales_layout.addStretch()
+            return
+
+        for sale in self.pending_sales:
+            card = QFrame()
+            card.setStyleSheet("""
+                QFrame {
+                    background: #F8FAFC;
+                    border: 1px solid #E2E8F0;
+                    border-radius: 10px;
+                }
+            """)
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(10, 10, 10, 10)
+            card_layout.setSpacing(6)
+
+            top_row = QHBoxLayout()
+            title = QLabel(f"Ticket attente #{sale.ticket_id}")
+            title.setStyleSheet("color: #0F172A; font-size: 12px; font-weight: 700;")
+            time_lbl = QLabel(sale.created_at.strftime("%H:%M"))
+            time_lbl.setStyleSheet("color: #64748B; font-size: 11px;")
+            top_row.addWidget(title)
+            top_row.addStretch()
+            top_row.addWidget(time_lbl)
+            card_layout.addLayout(top_row)
+
+            details = QLabel(f"{sale.item_count} articles  •  {int(sale.total):,} FCFA")
+            details.setStyleSheet("color: #475569; font-size: 12px;")
+            card_layout.addWidget(details)
+
+            actions = QHBoxLayout()
+            actions.setSpacing(6)
+
+            load_btn = QPushButton("Charger")
+            load_btn.setStyleSheet("QPushButton { background: #E2E8F0; border: none; border-radius: 8px; padding: 6px; font-size: 11px; }")
+            load_btn.clicked.connect(lambda _, sid=sale.ticket_id: self._load_pending_sale(sid))
+            actions.addWidget(load_btn)
+
+            pay_btn = QPushButton("Payer")
+            pay_btn.setStyleSheet("QPushButton { background: #DCFCE7; color: #166534; border: none; border-radius: 8px; padding: 6px; font-size: 11px; font-weight: 700; }")
+            pay_btn.clicked.connect(lambda _, sid=sale.ticket_id: self._pay_pending_sale(sid))
+            actions.addWidget(pay_btn)
+
+            delete_btn = QPushButton("Suppr.")
+            delete_btn.setStyleSheet("QPushButton { background: #FEE2E2; color: #B91C1C; border: none; border-radius: 8px; padding: 6px; font-size: 11px; }")
+            delete_btn.clicked.connect(lambda _, sid=sale.ticket_id: self._remove_pending_sale(sid))
+            actions.addWidget(delete_btn)
+
+            card_layout.addLayout(actions)
+            self.pending_sales_layout.addWidget(card)
+
+        self.pending_sales_layout.addStretch()
+
+    def _find_pending_sale(self, ticket_id: int) -> PendingSale | None:
+        return next((sale for sale in self.pending_sales if sale.ticket_id == ticket_id), None)
+
+    def _load_pending_sale(self, ticket_id: int) -> None:
+        pending = self._find_pending_sale(ticket_id)
+        if pending is None:
+            return
+
+        if self.cart_lines and QMessageBox.question(
+            self,
+            "Charger une vente",
+            "Le panier actuel sera remplace. Continuer ?",
+        ) != QMessageBox.StandardButton.Yes:
+            return
+
+        self.cart_lines = deepcopy(pending.lines)
+        self.pending_sales = [sale for sale in self.pending_sales if sale.ticket_id != ticket_id]
+        self.cart_widget.load_lines(self.cart_lines)
+        self._refresh_total()
+        self._refresh_pending_sales_panel()
+        self._focus_scan_input()
+
+    def _remove_pending_sale(self, ticket_id: int) -> None:
+        self.pending_sales = [sale for sale in self.pending_sales if sale.ticket_id != ticket_id]
+        self._refresh_pending_sales_panel()
+        self._focus_scan_input()
+
+    def _pay_pending_sale(self, ticket_id: int) -> None:
+        pending = self._find_pending_sale(ticket_id)
+        if pending is None:
+            return
+
+        if self._checkout_lines(deepcopy(pending.lines)):
+            self.pending_sales = [sale for sale in self.pending_sales if sale.ticket_id != ticket_id]
+            self._refresh_pending_sales_panel()
+
         self._focus_scan_input()
 
     def _refresh_total(self) -> Decimal:
@@ -561,29 +738,34 @@ class POSScreen(QWidget):
         return total
 
     def _open_payment(self, preferred_channel: str | None = None) -> None:
-        total = self._refresh_total()
+        if self._checkout_lines(self.cart_lines, preferred_channel):
+            self.cart_lines = []
+            self.cart_widget.load_lines(self.cart_lines)
+            self._refresh_total()
+        self._focus_scan_input()
+
+    def _checkout_lines(self, lines: list[CartLine], preferred_channel: str | None = None) -> bool:
+        total = self.sale_service.compute_total(lines)
         if total <= 0:
             QMessageBox.information(self, "Panier vide", "Scannez au moins un produit avant de payer.")
-            self._focus_scan_input()
-            return
+            return False
 
         dialog = PaymentDialog(total, self)
         if preferred_channel:
             dialog.set_preferred_channel(preferred_channel)
 
         if dialog.exec() != PaymentDialog.DialogCode.Accepted:
-            self._focus_scan_input()
-            return
+            return False
 
         sale = self.sale_service.finalize_sale(
             self.cashier,
             dialog.selected_method,
             dialog.selected_channel,
-            self.cart_lines,
+            lines,
             dialog.transaction_reference,
         )
         receipt = self.receipt_service.build_receipt_text(
-            sale, self.cashier, dialog.amount_given, dialog.change, self.cart_lines
+            sale, self.cashier, dialog.amount_given, dialog.change, lines
         )
         self.printer_service.print_and_cut(
             receipt,
@@ -591,8 +773,4 @@ class POSScreen(QWidget):
         )
         self.preview.set_receipt(receipt)
         self.preview.show()
-
-        self.cart_lines = []
-        self.cart_widget.load_lines(self.cart_lines)
-        self._refresh_total()
-        self._focus_scan_input()
+        return True

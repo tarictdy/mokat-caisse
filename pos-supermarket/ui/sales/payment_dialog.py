@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QFrame,
-    QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from models.sale import PaymentMethod
@@ -18,6 +20,8 @@ from services.payment_service import PaymentService
 
 
 class PaymentDialog(QDialog):
+    """Dialogue de paiement moderne et intuitif"""
+    
     def __init__(self, total: Decimal, parent: QDialog | None = None) -> None:
         super().__init__(parent)
         self.total = total
@@ -29,83 +33,215 @@ class PaymentDialog(QDialog):
         self.transaction_reference = ""
 
         self.setWindowTitle("Encaissement")
-        self.setMinimumWidth(420)
+        self.setMinimumSize(480, 580)
         self.setModal(True)
+        self.setStyleSheet("""
+            QDialog {
+                background: #F8FAFC;
+            }
+            QLabel {
+                color: #374151;
+            }
+            QLineEdit, QComboBox {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                padding: 14px 16px;
+                font-size: 14px;
+                color: #1F2937;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border: 2px solid #3B82F6;
+            }
+            QComboBox::drop-down {
+                border: none;
+                padding-right: 16px;
+            }
+            QComboBox::down-arrow {
+                width: 12px;
+                height: 12px;
+            }
+        """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         # ── Header ────────────────────────────────────────────
-        header_lbl = QLabel("Encaissement")
-        header_lbl.setStyleSheet("font-size: 18px; font-weight: 700; color: #0F172A;")
-        layout.addWidget(header_lbl)
+        header = QWidget()
+        header.setStyleSheet("background: #FFFFFF; border-bottom: 1px solid #E2E8F0;")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(28, 24, 28, 20)
+        
+        header_title = QLabel("Encaissement")
+        header_title.setStyleSheet("font-size: 22px; font-weight: 700; color: #0F172A;")
+        header_layout.addWidget(header_title)
+        layout.addWidget(header)
 
-        # Total display
-        total_frame = QFrame()
-        total_frame.setObjectName("Card")
-        total_frame.setStyleSheet(
-            "QFrame#Card { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 16px; }"
-        )
-        total_v = QVBoxLayout(total_frame)
-        total_v.setContentsMargins(16, 14, 16, 14)
-        total_v.setSpacing(2)
-        total_title = QLabel("TOTAL A PAYER")
-        total_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #3B82F6; letter-spacing: 0.8px;")
+        # ── Content ───────────────────────────────────────────
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(28, 24, 28, 24)
+        content_layout.setSpacing(20)
+
+        # Total display card
+        total_card = QFrame()
+        total_card.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #3B82F6, stop:1 #1D4ED8);
+                border-radius: 16px;
+            }
+        """)
+        total_card_layout = QVBoxLayout(total_card)
+        total_card_layout.setContentsMargins(24, 24, 24, 24)
+        total_card_layout.setSpacing(4)
+
+        total_label_title = QLabel("TOTAL A PAYER")
+        total_label_title.setStyleSheet("""
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+        """)
         self.total_label = QLabel(f"{int(total):,} FCFA")
-        self.total_label.setStyleSheet("font-size: 32px; font-weight: 800; color: #1E3A8A;")
-        total_v.addWidget(total_title)
-        total_v.addWidget(self.total_label)
-        layout.addWidget(total_frame)
+        self.total_label.setStyleSheet("""
+            color: #FFFFFF;
+            font-size: 36px;
+            font-weight: 800;
+        """)
+        total_card_layout.addWidget(total_label_title)
+        total_card_layout.addWidget(self.total_label)
+        content_layout.addWidget(total_card)
 
-        # Separator
-        sep = QFrame(); sep.setFixedHeight(1); sep.setStyleSheet("background: #E2E8F0;")
-        layout.addWidget(sep)
-
-        # Form
-        form = QFormLayout()
-        form.setSpacing(12)
-        form.setLabelAlignment(
-            __import__("PyQt6.QtCore", fromlist=["Qt"]).Qt.AlignmentFlag.AlignRight
-        )
+        # Payment method
+        method_label = QLabel("Mode de paiement")
+        method_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #64748B;")
+        content_layout.addWidget(method_label)
 
         self.channel_select = QComboBox()
         for label, channel, _ in self.payment_service.payment_channels():
             self.channel_select.addItem(label, channel)
+        self.channel_select.setMinimumHeight(52)
+        content_layout.addWidget(self.channel_select)
+
+        # Amount input
+        amount_label = QLabel("Montant recu")
+        amount_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #64748B;")
+        content_layout.addWidget(amount_label)
 
         self.amount_input = QLineEdit()
-        self.amount_input.setPlaceholderText("Montant donne par le client")
-        self.amount_input.setMinimumHeight(40)
+        self.amount_input.setPlaceholderText("Entrez le montant donne par le client")
+        self.amount_input.setMinimumHeight(52)
+        self.amount_input.setStyleSheet("""
+            QLineEdit {
+                background: #FFFFFF;
+                border: 2px solid #E2E8F0;
+                border-radius: 12px;
+                padding: 14px 20px;
+                font-size: 18px;
+                font-weight: 600;
+                color: #0F172A;
+            }
+            QLineEdit:focus {
+                border: 2px solid #3B82F6;
+            }
+        """)
+        content_layout.addWidget(self.amount_input)
+
+        # Reference input
+        ref_label = QLabel("Reference transaction (optionnel)")
+        ref_label.setStyleSheet("font-size: 13px; font-weight: 600; color: #64748B;")
+        content_layout.addWidget(ref_label)
 
         self.reference_input = QLineEdit()
-        self.reference_input.setPlaceholderText("Reference transaction (optionnel)")
-        self.reference_input.setMinimumHeight(40)
+        self.reference_input.setPlaceholderText("Ex: numero de transaction mobile")
+        self.reference_input.setMinimumHeight(48)
+        content_layout.addWidget(self.reference_input)
 
-        form.addRow("Mode de paiement :", self.channel_select)
-        form.addRow("Montant donne :", self.amount_input)
-        form.addRow("Reference :", self.reference_input)
-        layout.addLayout(form)
+        # Change display card
+        self.change_card = QFrame()
+        self.change_card.setStyleSheet("""
+            QFrame {
+                background: #F0FDF4;
+                border: 1px solid #BBF7D0;
+                border-radius: 12px;
+            }
+        """)
+        change_card_layout = QHBoxLayout(self.change_card)
+        change_card_layout.setContentsMargins(20, 16, 20, 16)
 
-        # Change display
-        self.change_label = QLabel("Monnaie a rendre : 0 FCFA")
-        self.change_label.setStyleSheet("font-size: 15px; font-weight: 700; color: #16A34A;")
-        layout.addWidget(self.change_label)
+        change_label_title = QLabel("Monnaie a rendre")
+        change_label_title.setStyleSheet("color: #166534; font-size: 14px; font-weight: 500;")
+        self.change_label = QLabel("0 FCFA")
+        self.change_label.setStyleSheet("color: #15803D; font-size: 22px; font-weight: 800;")
+        change_card_layout.addWidget(change_label_title)
+        change_card_layout.addStretch()
+        change_card_layout.addWidget(self.change_label)
+        content_layout.addWidget(self.change_card)
 
         # Status label
         self.status_label = QLabel("")
         self.status_label.setWordWrap(True)
-        layout.addWidget(self.status_label)
+        self.status_label.setStyleSheet("font-size: 13px; font-weight: 600;")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        content_layout.addWidget(self.status_label)
 
-        # Confirm button
-        self.confirm_btn = QPushButton("Valider le paiement")
-        self.confirm_btn.setObjectName("SuccessButton")
-        self.confirm_btn.setMinimumHeight(48)
-        layout.addWidget(self.confirm_btn)
+        content_layout.addStretch()
+        layout.addWidget(content, 1)
+
+        # ── Footer ────────────────────────────────────────────
+        footer = QWidget()
+        footer.setStyleSheet("background: #FFFFFF; border-top: 1px solid #E2E8F0;")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(28, 20, 28, 20)
+        footer_layout.setSpacing(12)
+
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.setMinimumHeight(52)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background: #F1F5F9;
+                color: #475569;
+                border: none;
+                border-radius: 12px;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 0 32px;
+            }
+            QPushButton:hover {
+                background: #E2E8F0;
+            }
+        """)
+        cancel_btn.clicked.connect(self.reject)
+
+        self.confirm_btn = QPushButton("Confirmer le paiement")
+        self.confirm_btn.setMinimumHeight(52)
+        self.confirm_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #10B981, stop:1 #059669);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 12px;
+                font-size: 15px;
+                font-weight: 700;
+                padding: 0 32px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #059669, stop:1 #047857);
+            }
+        """)
+        self.confirm_btn.clicked.connect(self._validate)
+
+        footer_layout.addWidget(cancel_btn)
+        footer_layout.addWidget(self.confirm_btn, 1)
+        layout.addWidget(footer)
 
         # Connections
         self.channel_select.currentIndexChanged.connect(self._payment_mode_changed)
         self.amount_input.textChanged.connect(self._recompute_change)
-        self.confirm_btn.clicked.connect(self._validate)
 
         self._payment_mode_changed()
 
@@ -121,18 +257,18 @@ class PaymentDialog(QDialog):
 
         is_cash = self.payment_service.is_cash_payment(self.selected_channel)
         self.amount_input.setEnabled(is_cash)
-        self.change_label.setVisible(is_cash)
+        self.change_card.setVisible(is_cash)
 
         if not is_cash:
             self.amount_given = self.total
             self.change = Decimal("0")
             self.amount_input.setText(f"{int(self.total)}")
             self.status_label.setText("Confirmez la reception du paiement mobile / carte")
-            self.status_label.setObjectName("StatusWarning")
+            self.status_label.setStyleSheet("color: #D97706; font-size: 13px; font-weight: 600;")
         else:
             self.amount_input.clear()
             self.status_label.setText("")
-            self.status_label.setObjectName("")
+            self.amount_input.setFocus()
 
         self._recompute_change()
 
@@ -141,23 +277,39 @@ class PaymentDialog(QDialog):
             self.amount_given = Decimal(self.amount_input.text().strip() or "0")
         except InvalidOperation:
             self.status_label.setText("Montant invalide")
+            self.status_label.setStyleSheet("color: #DC2626; font-size: 13px; font-weight: 600;")
             return
 
         self.change = self.payment_service.calculate_change(self.amount_given, self.total)
-        self.change_label.setText(f"Monnaie a rendre : {int(self.change):,} FCFA")
+        self.change_label.setText(f"{int(self.change):,} FCFA")
 
         if self.payment_service.is_payment_sufficient(self.amount_given, self.total, self.selected_channel):
             if self.payment_service.is_cash_payment(self.selected_channel):
                 self.status_label.setText("Montant suffisant")
-                self.status_label.setStyleSheet("color: #16A34A; font-weight: 600;")
+                self.status_label.setStyleSheet("color: #16A34A; font-size: 13px; font-weight: 600;")
+                self.change_card.setStyleSheet("""
+                    QFrame {
+                        background: #F0FDF4;
+                        border: 1px solid #BBF7D0;
+                        border-radius: 12px;
+                    }
+                """)
         else:
             self.status_label.setText("Montant insuffisant")
-            self.status_label.setStyleSheet("color: #DC2626; font-weight: 600;")
+            self.status_label.setStyleSheet("color: #DC2626; font-size: 13px; font-weight: 600;")
+            self.change_card.setStyleSheet("""
+                QFrame {
+                    background: #FEF2F2;
+                    border: 1px solid #FECACA;
+                    border-radius: 12px;
+                }
+            """)
+            self.change_label.setStyleSheet("color: #DC2626; font-size: 22px; font-weight: 800;")
 
     def _validate(self) -> None:
         self.transaction_reference = self.reference_input.text().strip()
         if self.payment_service.is_payment_sufficient(self.amount_given, self.total, self.selected_channel):
             self.accept()
         else:
-            self.status_label.setText("Impossible de valider : montant insuffisant")
-            self.status_label.setStyleSheet("color: #DC2626; font-weight: 600;")
+            self.status_label.setText("Montant insuffisant - impossible de valider")
+            self.status_label.setStyleSheet("color: #DC2626; font-size: 13px; font-weight: 600;")

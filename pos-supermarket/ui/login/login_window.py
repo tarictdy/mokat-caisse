@@ -3,14 +3,17 @@ from __future__ import annotations
 import traceback
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
     QSizePolicy,
+    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
@@ -27,126 +30,289 @@ from ui.dashboard.supervisor_dashboard import SupervisorDashboard
 class LoginWindow(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("MOKAT MARKET — Connexion")
-        self.setMinimumSize(960, 600)
+        self.setWindowTitle("MOKAT MARKET - Connexion")
+        self.setMinimumSize(1100, 700)
         self.setObjectName("LoginRoot")
 
-        # ── Two-column layout ──────────────────────────────
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # Left branding panel
+        # ══════════════════════════════════════════════════════════
+        # LEFT PANEL — Branding & Illustration
+        # ══════════════════════════════════════════════════════════
         left = QWidget()
         left.setObjectName("LoginRoot")
-        left.setMinimumWidth(400)
+        left.setMinimumWidth(480)
         left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(52, 52, 52, 52)
+        left_layout.setContentsMargins(60, 60, 60, 60)
         left_layout.setSpacing(0)
 
-        brand = QLabel("MOKAT MARKET")
-        brand.setStyleSheet(
-            "color: #2563EB; font-size: 22px; font-weight: 800;"
-            "letter-spacing: 2px; background: transparent;"
+        # Logo / Brand
+        logo_row = QHBoxLayout()
+        logo_row.setSpacing(12)
+        
+        logo_icon = QLabel()
+        logo_icon.setFixedSize(48, 48)
+        logo_icon.setStyleSheet(
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #2563EB, stop:1 #1D4ED8);"
+            "border-radius: 12px;"
         )
-        tagline = QLabel("Point de Vente Professionnel")
-        tagline.setStyleSheet(
-            "color: #94A3B8; font-size: 14px; background: transparent; margin-top: 4px;"
+        logo_icon_text = QLabel("M")
+        logo_icon_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_icon_text.setStyleSheet(
+            "color: #FFFFFF; font-size: 24px; font-weight: 800;"
+            "background: transparent;"
         )
+        icon_layout = QVBoxLayout(logo_icon)
+        icon_layout.setContentsMargins(0, 0, 0, 0)
+        icon_layout.addWidget(logo_icon_text)
+        
+        brand_text = QLabel("MOKAT MARKET")
+        brand_text.setStyleSheet(
+            "color: #FFFFFF; font-size: 22px; font-weight: 800;"
+            "letter-spacing: 3px; background: transparent;"
+        )
+        
+        logo_row.addWidget(logo_icon)
+        logo_row.addWidget(brand_text)
+        logo_row.addStretch()
+        left_layout.addLayout(logo_row)
+        
+        left_layout.addSpacerItem(QSpacerItem(20, 60, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        divider = QFrame()
-        divider.setFixedHeight(1)
-        divider.setStyleSheet("background: #1E293B; margin: 28px 0;")
+        # Main headline
+        headline = QLabel("Gerez votre\ncommerce en\ntoute simplicite")
+        headline.setStyleSheet(
+            "color: #FFFFFF; font-size: 42px; font-weight: 700;"
+            "line-height: 1.2; background: transparent; letter-spacing: -1px;"
+        )
+        headline.setWordWrap(True)
+        left_layout.addWidget(headline)
 
+        left_layout.addSpacerItem(QSpacerItem(20, 30, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Description
         desc = QLabel(
-            "Gerez vos ventes, votre stock\net vos promotions depuis\nune seule interface."
+            "Solution complete de point de vente pour les\n"
+            "supermarches et commerces de detail."
         )
         desc.setStyleSheet(
-            "color: #CBD5E1; font-size: 15px; line-height: 1.6;"
+            "color: #94A3B8; font-size: 16px; line-height: 1.6;"
             "background: transparent;"
         )
         desc.setWordWrap(True)
-
-        left_layout.addStretch()
-        left_layout.addWidget(brand)
-        left_layout.addWidget(tagline)
-        left_layout.addWidget(divider)
         left_layout.addWidget(desc)
+
+        left_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Feature badges
+        features_row = QHBoxLayout()
+        features_row.setSpacing(12)
+        
+        for feature in ["Ventes", "Stock", "Rapports"]:
+            badge = QFrame()
+            badge.setStyleSheet(
+                "background: #1E293B; border-radius: 20px; padding: 0;"
+            )
+            badge_layout = QHBoxLayout(badge)
+            badge_layout.setContentsMargins(16, 10, 16, 10)
+            badge_layout.setSpacing(8)
+            
+            dot = QLabel()
+            dot.setFixedSize(8, 8)
+            dot.setStyleSheet("background: #2563EB; border-radius: 4px;")
+            
+            badge_text = QLabel(feature)
+            badge_text.setStyleSheet(
+                "color: #E2E8F0; font-size: 13px; font-weight: 600;"
+                "background: transparent;"
+            )
+            
+            badge_layout.addWidget(dot)
+            badge_layout.addWidget(badge_text)
+            features_row.addWidget(badge)
+        
+        features_row.addStretch()
+        left_layout.addLayout(features_row)
+
         left_layout.addStretch()
 
-        version = QLabel("v1.0 — Powered by SOCAFTDYINDUSTRUAP")
-        version.setStyleSheet("color: #334155; font-size: 11px; background: transparent;")
-        left_layout.addWidget(version)
+        # Footer
+        footer = QLabel("v2.0  -  Propulse par SOCAFTDYINDUSTRUAP")
+        footer.setStyleSheet(
+            "color: #475569; font-size: 12px; background: transparent;"
+        )
+        left_layout.addWidget(footer)
 
-        # Right login card panel
+        # ══════════════════════════════════════════════════════════
+        # RIGHT PANEL — Login Form
+        # ══════════════════════════════════════════════════════════
         right = QWidget()
         right.setStyleSheet("background: #F8FAFC;")
         right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(60, 0, 60, 0)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        # Card container with shadow effect
         card = QFrame()
         card.setObjectName("LoginCard")
-        card.setMinimumWidth(360)
-        card.setMaximumWidth(420)
+        card.setFixedWidth(420)
+        card.setStyleSheet(
+            "QFrame#LoginCard {"
+            "    background: #FFFFFF;"
+            "    border-radius: 24px;"
+            "    border: 1px solid #E2E8F0;"
+            "}"
+        )
+        
+        # Shadow effect
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(60)
+        shadow.setXOffset(0)
+        shadow.setYOffset(8)
+        shadow.setColor(Qt.GlobalColor.black)
+        card.setGraphicsEffect(shadow)
+
         card_layout = QVBoxLayout(card)
-        card_layout.setSpacing(20)
-        card_layout.setContentsMargins(32, 32, 32, 32)
+        card_layout.setContentsMargins(40, 48, 40, 48)
+        card_layout.setSpacing(0)
 
-        # Title inside card
-        title = QLabel("Connexion")
-        title.setStyleSheet("font-size: 22px; font-weight: 700; color: #0F172A;")
-        subtitle = QLabel("Entrez vos identifiants pour continuer")
-        subtitle.setStyleSheet("font-size: 13px; color: #64748B; margin-top: -8px;")
-        card_layout.addWidget(title)
-        card_layout.addWidget(subtitle)
+        # Welcome text
+        welcome_lbl = QLabel("Bienvenue")
+        welcome_lbl.setStyleSheet(
+            "font-size: 28px; font-weight: 700; color: #0F172A;"
+            "letter-spacing: -0.5px; background: transparent;"
+        )
+        card_layout.addWidget(welcome_lbl)
 
-        # Separator
-        sep = QFrame()
-        sep.setFixedHeight(1)
-        sep.setStyleSheet("background: #E2E8F0;")
-        card_layout.addWidget(sep)
+        card_layout.addSpacerItem(QSpacerItem(20, 8, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        # Username
+        sub_lbl = QLabel("Connectez-vous pour acceder a votre espace")
+        sub_lbl.setStyleSheet(
+            "font-size: 14px; color: #64748B; background: transparent;"
+        )
+        card_layout.addWidget(sub_lbl)
+
+        card_layout.addSpacerItem(QSpacerItem(20, 36, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Username field
         lbl_user = QLabel("Nom d'utilisateur")
-        lbl_user.setStyleSheet("font-size: 12px; font-weight: 600; color: #374151;")
-        self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("ex: admin")
-        self.username_input.setMinimumHeight(40)
+        lbl_user.setStyleSheet(
+            "font-size: 13px; font-weight: 600; color: #374151;"
+            "margin-bottom: 8px; background: transparent;"
+        )
+        card_layout.addWidget(lbl_user)
 
-        # Password
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Entrez votre identifiant")
+        self.username_input.setMinimumHeight(52)
+        self.username_input.setStyleSheet(
+            "QLineEdit {"
+            "    background: #F8FAFC;"
+            "    border: 2px solid #E2E8F0;"
+            "    border-radius: 12px;"
+            "    padding: 14px 18px;"
+            "    font-size: 14px;"
+            "    color: #0F172A;"
+            "}"
+            "QLineEdit:hover { border-color: #CBD5E1; }"
+            "QLineEdit:focus {"
+            "    border-color: #2563EB;"
+            "    background: #FFFFFF;"
+            "}"
+        )
+        card_layout.addWidget(self.username_input)
+
+        card_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Password field
         lbl_pass = QLabel("Mot de passe")
-        lbl_pass.setStyleSheet("font-size: 12px; font-weight: 600; color: #374151;")
+        lbl_pass.setStyleSheet(
+            "font-size: 13px; font-weight: 600; color: #374151;"
+            "margin-bottom: 8px; background: transparent;"
+        )
+        card_layout.addWidget(lbl_pass)
+
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_input.setPlaceholderText("••••••••")
-        self.password_input.setMinimumHeight(40)
+        self.password_input.setPlaceholderText("Entrez votre mot de passe")
+        self.password_input.setMinimumHeight(52)
+        self.password_input.setStyleSheet(
+            "QLineEdit {"
+            "    background: #F8FAFC;"
+            "    border: 2px solid #E2E8F0;"
+            "    border-radius: 12px;"
+            "    padding: 14px 18px;"
+            "    font-size: 14px;"
+            "    color: #0F172A;"
+            "}"
+            "QLineEdit:hover { border-color: #CBD5E1; }"
+            "QLineEdit:focus {"
+            "    border-color: #2563EB;"
+            "    background: #FFFFFF;"
+            "}"
+        )
         self.password_input.returnPressed.connect(self._on_login)
-
-        card_layout.addWidget(lbl_user)
-        card_layout.addWidget(self.username_input)
-        card_layout.addWidget(lbl_pass)
         card_layout.addWidget(self.password_input)
 
-        # Error label (hidden by default)
+        card_layout.addSpacerItem(QSpacerItem(20, 12, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+
+        # Error label
         self.error_label = QLabel("")
-        self.error_label.setObjectName("StatusError")
-        self.error_label.setVisible(False)
+        self.error_label.setStyleSheet(
+            "color: #DC2626; font-size: 13px; font-weight: 500;"
+            "padding: 10px 14px; background: #FEF2F2;"
+            "border-radius: 8px; border: 1px solid #FECACA;"
+        )
         self.error_label.setWordWrap(True)
+        self.error_label.setVisible(False)
         card_layout.addWidget(self.error_label)
+
+        card_layout.addSpacerItem(QSpacerItem(20, 28, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
         # Login button
         self.login_button = QPushButton("Se connecter")
-        self.login_button.setObjectName("PrimaryLarge")
+        self.login_button.setMinimumHeight(54)
+        self.login_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.login_button.setStyleSheet(
+            "QPushButton {"
+            "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2563EB, stop:1 #1D4ED8);"
+            "    color: #FFFFFF;"
+            "    border: none;"
+            "    border-radius: 12px;"
+            "    font-size: 15px;"
+            "    font-weight: 700;"
+            "}"
+            "QPushButton:hover {"
+            "    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1D4ED8, stop:1 #1E40AF);"
+            "}"
+            "QPushButton:pressed {"
+            "    background: #1E40AF;"
+            "}"
+            "QPushButton:disabled {"
+            "    background: #CBD5E1;"
+            "    color: #94A3B8;"
+            "}"
+        )
         self.login_button.clicked.connect(self._on_login)
         card_layout.addWidget(self.login_button)
 
-        right_layout.addStretch()
-        right_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignHCenter)
-        right_layout.addStretch()
+        card_layout.addSpacerItem(QSpacerItem(20, 24, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
 
-        root.addWidget(left, 2)
-        root.addWidget(right, 3)
+        # Help text
+        help_lbl = QLabel("Besoin d'aide ? Contactez votre administrateur")
+        help_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        help_lbl.setStyleSheet(
+            "font-size: 12px; color: #94A3B8; background: transparent;"
+        )
+        card_layout.addWidget(help_lbl)
+
+        right_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Add panels
+        root.addWidget(left, 5)
+        root.addWidget(right, 5)
 
         self._dashboard = None
 
@@ -164,7 +330,7 @@ class LoginWindow(QWidget):
                 )
 
                 if not user:
-                    self.error_label.setText("Identifiants invalides. Veuillez reessayer.")
+                    self.error_label.setText("Identifiants incorrects. Verifiez votre nom d'utilisateur et mot de passe.")
                     self.error_label.setVisible(True)
                     self.login_button.setEnabled(True)
                     self.login_button.setText("Se connecter")
@@ -180,7 +346,7 @@ class LoginWindow(QWidget):
                 self._dashboard.show()
                 self.close()
 
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             traceback.print_exc()
             QMessageBox.critical(
                 self,

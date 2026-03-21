@@ -1,4 +1,5 @@
 from models.category import Category
+from models.expense import Expense
 from models.product import Product
 from models.promotion import Promotion
 from models.sale import Sale
@@ -9,6 +10,7 @@ from models.user import User
 
 __all__ = [
     "Category",
+    "Expense",
     "Product",
     "Promotion",
     "Sale",

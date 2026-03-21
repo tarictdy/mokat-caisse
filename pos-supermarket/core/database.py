@@ -94,6 +94,7 @@ def init_db() -> None:
     # Late import to ensure all models are registered on metadata.
     from models import (
         category,
+        expense,
         product,
         promotion,
         sale,
@@ -103,7 +104,7 @@ def init_db() -> None:
         user,
     )
 
-    _ = (category, product, promotion, sale, sale_item, stock_movement, supplier, user)
+    _ = (category, expense, product, promotion, sale, sale_item, stock_movement, supplier, user)
     Base.metadata.create_all(bind=engine)
     _ensure_product_columns()
     _ensure_sales_columns()

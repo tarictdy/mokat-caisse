@@ -61,6 +61,13 @@ class SaleService:
     def compute_total(self, lines: list[CartLine]) -> Decimal:
         return sum((line.total_price for line in lines), Decimal("0.00"))
 
+    def compute_discount_amount(self, lines: list[CartLine], discount_percentage: Decimal = Decimal("0.00")) -> Decimal:
+        subtotal = self.compute_total(lines)
+        if subtotal <= 0 or discount_percentage <= 0:
+            return Decimal("0.00")
+        discount = subtotal * discount_percentage / Decimal("100.00")
+        return discount.quantize(Decimal("0.01"))
+
     def finalize_sale(
         self,
         user: User,
@@ -68,27 +75,32 @@ class SaleService:
         payment_channel: str,
         lines: list[CartLine],
         transaction_reference: str | None = None,
+        discount_percentage: Decimal = Decimal("0.00"),
     ) -> Sale:
-        total = self.compute_total(lines)
+        subtotal = self.compute_total(lines)
+        discount_amount = self.compute_discount_amount(lines, discount_percentage)
+        total = max(Decimal("0.00"), subtotal - discount_amount)
         sale = Sale(
             receipt_number=self.build_receipt_number(),
             user_id=user.id,
             total_amount=total,
             tax_amount=Decimal("0.00"),
-            discount_amount=Decimal("0.00"),
+            discount_amount=discount_amount,
             payment_method=payment_method,
             payment_channel=payment_channel,
             transaction_reference=transaction_reference or None,
         )
 
+        subtotal_safe = subtotal if subtotal > 0 else Decimal("1.00")
         for line in lines:
+            line_discount = (discount_amount * line.total_price / subtotal_safe).quantize(Decimal("0.01")) if discount_amount > 0 else Decimal("0.00")
             sale.items.append(
                 SaleItem(
                     product_id=line.product_id,
                     quantity=line.quantity,
                     unit_price=line.unit_price,
-                    discount=Decimal("0.00"),
-                    total_price=line.total_price,
+                    discount=line_discount,
+                    total_price=max(Decimal("0.00"), line.total_price - line_discount),
                 )
             )
             product = self.product_repo.get_by_id(line.product_id)

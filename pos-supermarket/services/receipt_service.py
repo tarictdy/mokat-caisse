@@ -38,9 +38,15 @@ class ReceiptService:
             short_name = line.product_name[:12]
             lines.append(f"{short_name:<13}{line.quantity:<6}{int(line.total_price):>5}")
 
+        subtotal = sum((line.total_price for line in cart_lines), Decimal("0.00"))
         lines += [
             "",
             "--------------------------------",
+            f"SOUS-TOTAL     {self._format_money(subtotal)}",
+        ]
+        if sale.discount_amount and sale.discount_amount > 0:
+            lines.append(f"REMISE         -{self._format_money(sale.discount_amount)}")
+        lines += [
             f"TOTAL          {self._format_money(sale.total_amount)}",
             f"Montant donné  {self._format_money(amount_given)}",
             f"Monnaie        {self._format_money(change)}",

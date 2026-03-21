@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -55,6 +56,85 @@ class DashboardStats:
     low_stock_products: int
     active_promotions: int
     sales_today: Decimal
+
+
+class ReportLineChart(QWidget):
+    """Mini courbe d'evolution du chiffre d'affaires sur la periode selectionnee."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._points: list[tuple[str, Decimal]] = []
+        self.setMinimumHeight(260)
+
+    def set_series(self, points: list[tuple[str, Decimal]]) -> None:
+        self._points = points
+        self.update()
+
+    def paintEvent(self, event) -> None:  # type: ignore[override]
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        rect = self.rect().adjusted(18, 18, -18, -18)
+        painter.fillRect(self.rect(), QColor("#FFFFFF"))
+
+        if rect.width() <= 0 or rect.height() <= 0:
+            return
+
+        left = rect.left() + 48
+        top = rect.top() + 18
+        right = rect.right() - 16
+        bottom = rect.bottom() - 40
+        plot_width = max(1, right - left)
+        plot_height = max(1, bottom - top)
+
+        painter.setPen(QPen(QColor("#E2E8F0"), 1))
+        for step in range(5):
+            y = top + int(plot_height * step / 4)
+            painter.drawLine(left, y, right, y)
+
+        if not self._points:
+            painter.setPen(QColor("#64748B"))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Aucune vente sur cette periode")
+            return
+
+        values = [float(amount) for _, amount in self._points]
+        max_value = max(values) if values else 0.0
+        max_value = max(max_value, 1.0)
+
+        painter.setPen(QColor("#94A3B8"))
+        for step in range(5):
+            value = max_value * (4 - step) / 4
+            y = top + int(plot_height * step / 4)
+            painter.drawText(rect.left(), y + 4, 42, 16, Qt.AlignmentFlag.AlignRight, f"{value:,.0f}")
+
+        if len(self._points) == 1:
+            xs = [left + plot_width // 2]
+        else:
+            xs = [left + int(plot_width * idx / (len(self._points) - 1)) for idx in range(len(self._points))]
+
+        ys = [bottom - int((value / max_value) * plot_height) for value in values]
+
+        path = QPainterPath()
+        path.moveTo(xs[0], ys[0])
+        for x, y in zip(xs[1:], ys[1:]):
+            path.lineTo(x, y)
+
+        painter.setPen(QPen(QColor("#2563EB"), 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.drawPath(path)
+
+        for x, y, (_, amount) in zip(xs, ys, self._points):
+            painter.setBrush(QColor("#2563EB"))
+            painter.setPen(QPen(QColor("#FFFFFF"), 2))
+            painter.drawEllipse(x - 4, y - 4, 8, 8)
+            painter.setPen(QColor("#0F172A"))
+            painter.drawText(x - 30, y - 22, 60, 16, Qt.AlignmentFlag.AlignCenter, f"{float(amount):,.0f}")
+
+        painter.setPen(QColor("#64748B"))
+        label_step = max(1, len(self._points) // 6)
+        for idx, (label, _) in enumerate(self._points):
+            if idx % label_step == 0 or idx == len(self._points) - 1:
+                painter.drawText(xs[idx] - 35, bottom + 10, 70, 24, Qt.AlignmentFlag.AlignCenter, label)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1421,18 +1501,26 @@ class AdminDashboard(QWidget):
         self.report_end_date = QDateEdit()
         self.report_end_date.setCalendarPopup(True)
         self.report_end_date.setDate(QDate.currentDate())
+        self.report_group_by = QComboBox()
+        self.report_group_by.addItems(["Par jour", "Par mois"])
 
-        for w in (self.report_start_date, self.report_end_date):
-            w.setStyleSheet("QDateEdit { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px; }")
+        for w in (self.report_start_date, self.report_end_date, self.report_group_by):
+            w.setStyleSheet(
+                "QDateEdit, QComboBox { background: #F8FAFC; border: 1px solid #E2E8F0; "
+                "border-radius: 10px; padding: 10px 12px; }"
+            )
 
         self.report_refresh_btn = QPushButton("Actualiser")
         self.report_refresh_btn.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; } QPushButton:hover { background: #1D4ED8; }")
         self.report_refresh_btn.clicked.connect(self._refresh_reports_data)
+        self.report_group_by.currentIndexChanged.connect(lambda _=None: self._refresh_reports_data())
 
         filters_layout.addWidget(QLabel("Du"))
         filters_layout.addWidget(self.report_start_date)
         filters_layout.addWidget(QLabel("Au"))
         filters_layout.addWidget(self.report_end_date)
+        filters_layout.addWidget(QLabel("Vue"))
+        filters_layout.addWidget(self.report_group_by)
         filters_layout.addStretch()
         filters_layout.addWidget(self.report_refresh_btn)
         layout.addWidget(filters)
@@ -1453,6 +1541,19 @@ class AdminDashboard(QWidget):
         self.report_channel_summary = QLabel("Repartition des paiements: -")
         self.report_channel_summary.setStyleSheet("font-size: 13px; color: #475569;")
         report_layout.addWidget(self.report_channel_summary)
+
+        self.report_performance_title = QLabel("Courbe de performance des ventes")
+        self.report_performance_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        report_layout.addWidget(self.report_performance_title)
+
+        self.report_chart = ReportLineChart()
+        self.report_chart.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 14px; background: #FFFFFF;")
+        report_layout.addWidget(self.report_chart)
+
+        self.report_period_table = QTableWidget(0, 4)
+        self.report_period_table.setHorizontalHeaderLabels(["Periode", "Nb ventes", "CA", "Ticket moyen"])
+        self._style_table(self.report_period_table)
+        report_layout.addWidget(self.report_period_table)
 
         self.reports_table = QTableWidget(0, 6)
         self.reports_table.setHorizontalHeaderLabels(["Date", "Ticket", "Caissier", "Montant", "Canal", "Reference"])
@@ -1669,11 +1770,29 @@ class AdminDashboard(QWidget):
         total_revenue = sum((Decimal(str(s.total_amount)) for s in sales), Decimal("0.00"))
         sales_count = len(sales)
         avg_ticket = (total_revenue / sales_count) if sales_count else Decimal("0.00")
+        group_mode = self.report_group_by.currentText() if hasattr(self, "report_group_by") else "Par jour"
 
         by_channel: dict[str, Decimal] = {}
+        grouped_sales: dict[str, dict[str, Decimal | int]] = {}
         for sale in sales:
             by_channel.setdefault(sale.payment_channel, Decimal("0.00"))
             by_channel[sale.payment_channel] += Decimal(str(sale.total_amount))
+
+            if group_mode == "Par mois":
+                key = sale.created_at.strftime("%Y-%m")
+                label = sale.created_at.strftime("%m/%Y")
+            else:
+                key = sale.created_at.strftime("%Y-%m-%d")
+                label = sale.created_at.strftime("%d/%m/%Y")
+
+            if key not in grouped_sales:
+                grouped_sales[key] = {
+                    "label": label,
+                    "count": 0,
+                    "revenue": Decimal("0.00"),
+                }
+            grouped_sales[key]["count"] = int(grouped_sales[key]["count"]) + 1
+            grouped_sales[key]["revenue"] = Decimal(str(grouped_sales[key]["revenue"])) + Decimal(str(sale.total_amount))
 
         self.report_sales_count.setText(str(sales_count))
         self.report_revenue_total.setText(f"{total_revenue:,.0f} FCFA")
@@ -1683,6 +1802,30 @@ class AdminDashboard(QWidget):
             self.report_channel_summary.setText(f"Repartition des paiements: {summary}")
         else:
             self.report_channel_summary.setText("Repartition des paiements: aucune vente")
+
+        ordered_periods = sorted(grouped_sales.items(), key=lambda item: item[0])
+        chart_points = [
+            (str(data["label"]), Decimal(str(data["revenue"])))
+            for _, data in ordered_periods
+        ]
+        self.report_chart.set_series(chart_points)
+        self.report_performance_title.setText(
+            f"Courbe de performance des ventes ({'jour' if group_mode == 'Par jour' else 'mois'})"
+        )
+
+        self.report_period_table.setRowCount(len(ordered_periods))
+        for row, (_, data) in enumerate(ordered_periods):
+            period_revenue = Decimal(str(data["revenue"]))
+            period_count = int(data["count"])
+            period_avg = (period_revenue / period_count) if period_count else Decimal("0.00")
+            values = [
+                data["label"],
+                period_count,
+                f"{period_revenue:,.0f} FCFA",
+                f"{period_avg:,.0f} FCFA",
+            ]
+            for col, val in enumerate(values):
+                self.report_period_table.setItem(row, col, QTableWidgetItem(str(val)))
 
         self.reports_table.setRowCount(len(sales))
         for row, sale in enumerate(sales):

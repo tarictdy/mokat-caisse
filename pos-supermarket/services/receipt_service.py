@@ -41,6 +41,11 @@ class ReceiptService:
         lines += [
             "",
             "--------------------------------",
+            f"Sous-total     {self._format_money(sale.total_amount + sale.discount_amount)}",
+        ]
+        if sale.discount_amount > 0:
+            lines.append(f"Reduction      -{self._format_money(sale.discount_amount)}")
+        lines += [
             f"TOTAL          {self._format_money(sale.total_amount)}",
             f"Montant donné  {self._format_money(amount_given)}",
             f"Monnaie        {self._format_money(change)}",

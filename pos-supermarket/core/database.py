@@ -90,11 +90,30 @@ def _ensure_default_admin() -> None:
         session.commit()
 
 
+def _ensure_default_maintenance_access() -> None:
+    from core.security import hash_password
+    from models.maintenance import MaintenanceAccess, MaintenanceRole
+
+    with SessionLocal() as session:
+        existing = session.query(MaintenanceAccess).filter(MaintenanceAccess.username == "socaf").first()
+        if existing:
+            return
+        access = MaintenanceAccess(
+            username="socaf",
+            password_hash=hash_password("socaf"),
+            role=MaintenanceRole.SUPERADMIN,
+            is_active=True,
+        )
+        session.add(access)
+        session.commit()
+
+
 def init_db() -> None:
     # Late import to ensure all models are registered on metadata.
     from models import (
         category,
         charge,
+        maintenance,
         product,
         promotion,
         sale,
@@ -104,8 +123,9 @@ def init_db() -> None:
         user,
     )
 
-    _ = (category, charge, product, promotion, sale, sale_item, stock_movement, supplier, user)
+    _ = (category, charge, maintenance, product, promotion, sale, sale_item, stock_movement, supplier, user)
     Base.metadata.create_all(bind=engine)
     _ensure_product_columns()
     _ensure_sales_columns()
     _ensure_default_admin()
+    _ensure_default_maintenance_access()

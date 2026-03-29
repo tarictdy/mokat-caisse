@@ -51,6 +51,7 @@ from services.product_service import ProductService
 from services.sale_service import SaleService
 from services.user_service import UserService
 from ui.sales.pos_screen import POSScreen
+from ui.settings.maintenance_page import MaintenancePage
 
 
 @dataclass
@@ -964,7 +965,7 @@ class AdminDashboard(QWidget):
         self.stock_page = self._build_stock_page()
         self.pos_page = self._build_pos_page()
         self.reports_page = self._build_reports_page()
-        self.settings_page = self._build_placeholder_page("Parametres", "Configuration du systeme")
+        self.settings_page = MaintenancePage(f"{self.user.prenom} {self.user.nom}")
 
         for page in [
             self.dashboard_page, self.products_page, self.promotions_page,
@@ -1912,6 +1913,8 @@ class AdminDashboard(QWidget):
             self._refresh_stock_history()
         if row == 6:
             self._refresh_reports_data()
+        if row == 7 and hasattr(self.settings_page, "refresh_data"):
+            self.settings_page.refresh_data()
 
     def _open_pos_screen(self) -> None:
         session = SessionLocal()

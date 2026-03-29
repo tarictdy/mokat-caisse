@@ -3,11 +3,13 @@ from __future__ import annotations
 import platform
 import sys
 from datetime import datetime
+import importlib.util
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QDialog,
     QFormLayout,
     QFrame,
@@ -97,6 +99,11 @@ class MaintenancePage(QWidget):
         self.tabs.addTab(self.logs_tab, "Logs")
         self.tabs.addTab(self.security_tab, "Securite maintenance")
 
+        refresh_all = QPushButton("Actualiser la console maintenance")
+        refresh_all.setStyleSheet("QPushButton { background: #0EA5E9; color: white; border-radius: 8px; padding: 10px 14px; }")
+        refresh_all.clicked.connect(self.refresh_data)
+        layout.addWidget(refresh_all, alignment=Qt.AlignmentFlag.AlignRight)
+
     def _request_access(self) -> None:
         dialog = MaintenanceAuthDialog(self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
@@ -162,20 +169,22 @@ class MaintenancePage(QWidget):
         table = QTableWidget(0, 4)
         table.setHorizontalHeaderLabels(["Module", "Statut", "Service principal", "Dependances"])
         modules = [
-            ("Authentification", "Charge", "UserService", "UserRepository -> SQLite"),
-            ("Dashboard Admin", "Charge", "FinanceReportService", "Sale/Charge repos"),
-            ("Dashboard Supervisor", "Charge", "-", "UI"),
-            ("Dashboard Cashier", "Charge", "SaleService", "Product/Sale repos"),
-            ("POS / Caisse", "Charge", "SaleService", "PaymentService, PrinterService"),
-            ("Produits", "Charge", "ProductService", "ProductRepository"),
-            ("Stock", "Charge", "StockService", "ProductRepository"),
-            ("Promotions", "Charge", "PromotionService", "PromotionRepository"),
-            ("Utilisateurs", "Charge", "UserService", "UserRepository"),
-            ("Rapports", "Charge", "FinanceReportService", "Sale + Charge"),
-            ("Maintenance", "Charge", "MaintenanceService", "MaintenanceRepository"),
+            ("Authentification", "ui.login.login_window", "UserService", "UserRepository -> SQLite"),
+            ("Dashboard Admin", "ui.dashboard.admin_dashboard", "FinanceReportService", "Sale/Charge repos"),
+            ("Dashboard Supervisor", "ui.dashboard.supervisor_dashboard", "-", "UI"),
+            ("Dashboard Cashier", "ui.dashboard.cashier_dashboard", "SaleService", "Product/Sale repos"),
+            ("POS / Caisse", "ui.sales.pos_screen", "SaleService", "PaymentService, PrinterService"),
+            ("Produits", "services.product_service", "ProductService", "ProductRepository"),
+            ("Stock", "services.stock_service", "StockService", "ProductRepository"),
+            ("Promotions", "services.promotion_service", "PromotionService", "PromotionRepository"),
+            ("Utilisateurs", "services.user_service", "UserService", "UserRepository"),
+            ("Rapports", "services.finance_report_service", "FinanceReportService", "Sale + Charge"),
+            ("Maintenance", "ui.settings.maintenance_page", "MaintenanceService", "MaintenanceRepository"),
         ]
         table.setRowCount(len(modules))
-        for row, values in enumerate(modules):
+        for row, (label, module_path, service, deps) in enumerate(modules):
+            status = "Charge" if importlib.util.find_spec(module_path) else "Manquant"
+            values = (label, status, service, deps)
             for col, value in enumerate(values):
                 table.setItem(row, col, QTableWidgetItem(value))
         layout.addWidget(table)
@@ -184,16 +193,21 @@ class MaintenancePage(QWidget):
     def _build_flows_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        txt = QTextEdit()
-        txt.setReadOnly(True)
-        txt.setPlainText(
-            "LoginWindow -> UserService -> UserRepository -> SQLite\n"
-            "AdminDashboard -> FinanceReportService -> SaleRepository/ChargeRepository -> SQLite\n"
-            "POSScreen -> SaleService -> ProductRepository/SaleRepository -> SQLite\n"
-            "POSScreen -> PaymentService -> PrinterService -> hardware\n"
-            "MaintenancePage -> MaintenanceService -> MaintenanceRepository -> SQLite"
-        )
-        layout.addWidget(txt)
+        self.flow_table = QTableWidget(0, 5)
+        self.flow_table.setHorizontalHeaderLabels(["UI Source", "Service", "Repository", "Base/Infra", "But"])
+        flow_rows = [
+            ("LoginWindow", "UserService", "UserRepository", "SQLite", "Authentification utilisateur"),
+            ("POSScreen", "SaleService", "SaleRepository/ProductRepository", "SQLite", "Encaissement + stock"),
+            ("POSScreen", "PaymentService", "-", "Printer/CashDrawer", "Paiement + impression"),
+            ("AdminDashboard", "FinanceReportService", "Sale/Charge repositories", "SQLite", "Analyse rentabilite"),
+            ("MaintenancePage", "MaintenanceService", "MaintenanceRepository", "SQLite", "Securite maintenance"),
+            ("MaintenancePage", "FirebaseBackupService", "-", "Firebase Storage", "Backup cloud manuel"),
+        ]
+        self.flow_table.setRowCount(len(flow_rows))
+        for row, values in enumerate(flow_rows):
+            for col, value in enumerate(values):
+                self.flow_table.setItem(row, col, QTableWidgetItem(value))
+        layout.addWidget(self.flow_table)
         return tab
 
     def _build_files_tab(self) -> QWidget:
@@ -221,14 +235,24 @@ class MaintenancePage(QWidget):
         filters = QHBoxLayout()
         self.log_level_filter = QComboBox()
         self.log_level_filter.addItems(["TOUS", "INFO", "WARNING", "ERROR", "CRITICAL", "SECURITY"])
+        self.log_start_date = QDateEdit()
+        self.log_start_date.setCalendarPopup(True)
+        self.log_start_date.setDate(QDate.currentDate().addDays(-30))
+        self.log_end_date = QDateEdit()
+        self.log_end_date.setCalendarPopup(True)
+        self.log_end_date.setDate(QDate.currentDate())
         self.log_search_input = QLineEdit()
         self.log_search_input.setPlaceholderText("Rechercher dans les logs...")
         refresh = QPushButton("Actualiser")
         refresh.clicked.connect(self._load_logs)
         filters.addWidget(self.log_level_filter)
+        filters.addWidget(self.log_start_date)
+        filters.addWidget(self.log_end_date)
         filters.addWidget(self.log_search_input, 1)
         filters.addWidget(refresh)
         self.log_level_filter.currentIndexChanged.connect(self._load_logs)
+        self.log_start_date.dateChanged.connect(self._load_logs)
+        self.log_end_date.dateChanged.connect(self._load_logs)
         self.log_search_input.textChanged.connect(self._load_logs)
         layout.addLayout(filters)
         self.logs_output = QTextEdit()
@@ -269,6 +293,8 @@ class MaintenancePage(QWidget):
             f"Date systeme: {datetime.now().isoformat(sep=' ', timespec='seconds')}",
             f"Utilisateur connecte: {self.current_user}",
             f"Dossier base: {BASE_DIR}",
+            f"Machine: {platform.node()}",
+            f"Architecture: {platform.machine()}",
         ]
         self.system_info.setPlainText("\n".join(info))
 
@@ -280,13 +306,16 @@ class MaintenancePage(QWidget):
             ("Splash branding PNG", BASE_DIR.parent / "splash_branding.png"),
             ("Splash branding JPG", BASE_DIR.parent / "splash_branding.jpg"),
             ("Maintenance log", BASE_DIR / "data" / "maintenance.log"),
+            ("Dossier data", BASE_DIR / "data"),
+            ("Dossier exports", BASE_DIR / "exports"),
+            ("Credentials Firebase", BASE_DIR.parent / "ts" / "firebase-service-account.json"),
         ]
         self.files_table.setRowCount(len(candidates))
         for row, (name, path) in enumerate(candidates):
             exists = path.exists()
-            size = path.stat().st_size if exists else 0
+            size = path.stat().st_size if exists and path.is_file() else 0
             mtime = datetime.fromtimestamp(path.stat().st_mtime).isoformat(sep=" ", timespec="seconds") if exists else "-"
-            values = [name, str(path), "Oui" if exists else "Non", str(size), mtime, "OK" if exists and path.is_file() else "N/A"]
+            values = [name, str(path), "Oui" if exists else "Non", str(size), mtime, "OK" if exists else "N/A"]
             for col, value in enumerate(values):
                 self.files_table.setItem(row, col, QTableWidgetItem(value))
 
@@ -325,9 +354,14 @@ class MaintenancePage(QWidget):
             audit_logs = repo.list_audits(limit=300)
         level_filter = self.log_level_filter.currentText()
         keyword = self.log_search_input.text().strip().lower()
+        start = self.log_start_date.date().toPyDate()
+        end = self.log_end_date.date().toPyDate()
         lines = []
         for log in audit_logs:
             if level_filter != "TOUS" and log.level.upper() != level_filter:
+                continue
+            created_day = log.created_at.date()
+            if created_day < start or created_day > end:
                 continue
             line = f"[{log.created_at:%Y-%m-%d %H:%M:%S}] [{log.level}] {log.event_type} - {log.message} ({log.actor or '-'})"
             if keyword and keyword not in line.lower():

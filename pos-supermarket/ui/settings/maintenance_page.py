@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QHeaderView,
 )
 from sqlalchemy import text
 
@@ -168,6 +169,7 @@ class MaintenancePage(QWidget):
         layout = QVBoxLayout(tab)
         table = QTableWidget(0, 4)
         table.setHorizontalHeaderLabels(["Module", "Statut", "Service principal", "Dependances"])
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         modules = [
             ("Authentification", "ui.login.login_window", "UserService", "UserRepository -> SQLite"),
             ("Dashboard Admin", "ui.dashboard.admin_dashboard", "FinanceReportService", "Sale/Charge repos"),
@@ -195,6 +197,7 @@ class MaintenancePage(QWidget):
         layout = QVBoxLayout(tab)
         self.flow_table = QTableWidget(0, 5)
         self.flow_table.setHorizontalHeaderLabels(["UI Source", "Service", "Repository", "Base/Infra", "But"])
+        self.flow_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         flow_rows = [
             ("LoginWindow", "UserService", "UserRepository", "SQLite", "Authentification utilisateur"),
             ("POSScreen", "SaleService", "SaleRepository/ProductRepository", "SQLite", "Encaissement + stock"),
@@ -215,6 +218,7 @@ class MaintenancePage(QWidget):
         layout = QVBoxLayout(tab)
         self.files_table = QTableWidget(0, 6)
         self.files_table.setHorizontalHeaderLabels(["Nom", "Chemin", "Existe", "Taille", "Derniere modif", "Acces"])
+        self.files_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.files_table)
         return tab
 
@@ -225,6 +229,7 @@ class MaintenancePage(QWidget):
         self.db_summary.setReadOnly(True)
         self.db_tables = QTableWidget(0, 2)
         self.db_tables.setHorizontalHeaderLabels(["Table", "Nombre lignes"])
+        self.db_tables.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.db_summary)
         layout.addWidget(self.db_tables)
         return tab
@@ -278,10 +283,12 @@ class MaintenancePage(QWidget):
 
         self.security_table = QTableWidget(0, 6)
         self.security_table.setHorizontalHeaderLabels(["Username", "Role", "Actif", "Cree le", "Dernier acces", "Tentatives"])
+        self.security_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.security_table, 1)
 
         self.firebase_history_table = QTableWidget(0, 5)
         self.firebase_history_table.setHorizontalHeaderLabels(["Date", "Niveau", "Evenement", "Message", "Acteur"])
+        self.firebase_history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.firebase_history_table, 1)
         return tab
 

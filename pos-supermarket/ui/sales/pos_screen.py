@@ -296,7 +296,9 @@ class POSScreen(QWidget):
         # RIGHT COLUMN - Total + Actions (40%)
         # ──────────────────────────────────────────────────────────────────────
         right_container = QWidget()
-        right_container.setFixedWidth(380)
+        self.right_container = right_container
+        right_container.setMinimumWidth(320)
+        right_container.setMaximumWidth(420)
         right_layout = QVBoxLayout(right_container)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(16)
@@ -587,7 +589,16 @@ class POSScreen(QWidget):
 
     def showEvent(self, event) -> None:  # type: ignore[override]
         super().showEvent(event)
+        self._update_right_panel_width()
         self._focus_scan_input()
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        self._update_right_panel_width()
+
+    def _update_right_panel_width(self) -> None:
+        panel_width = max(320, min(420, int(self.width() * 0.34)))
+        self.right_container.setFixedWidth(panel_width)
 
     def _install_shortcuts(self) -> None:
         QShortcut(QKeySequence("F1"), self).activated.connect(lambda: self._open_payment(PaymentService.CASH_CHANNEL))

@@ -803,15 +803,15 @@ class AdminDashboard(QWidget):
         # ══════════════════════════════════════════════════════════════════════
         # SIDEBAR - Navigation gauche
         # ══════════════════════════════════════════════════════════════════════
-        sidebar = QWidget()
-        sidebar.setFixedWidth(260)
-        sidebar.setStyleSheet("""
+        self.sidebar = QWidget()
+        self.sidebar.setFixedWidth(240)
+        self.sidebar.setStyleSheet("""
             QWidget {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #0F172A, stop:1 #1E293B);
             }
         """)
-        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
 
@@ -941,7 +941,7 @@ class AdminDashboard(QWidget):
         uf_layout.addWidget(logout_btn)
         sidebar_layout.addWidget(user_footer)
 
-        root.addWidget(sidebar)
+        root.addWidget(self.sidebar)
 
         # ══════════════════════════════════════════════════════════════════════
         # MAIN CONTENT
@@ -980,6 +980,16 @@ class AdminDashboard(QWidget):
 
         root.addWidget(content, 1)
         self.refresh_dashboard()
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        width = self.width()
+        if width < 1100:
+            self.sidebar.setFixedWidth(180)
+        elif width < 1360:
+            self.sidebar.setFixedWidth(210)
+        else:
+            self.sidebar.setFixedWidth(240)
 
     def _populate_sidebar(self) -> None:
         items = [

@@ -31,10 +31,10 @@ class CashierDashboard(QWidget):
         root.setSpacing(0)
 
         # ── Left branding strip ───────────────────────────────
-        left = QWidget()
-        left.setObjectName("LoginRoot")
-        left.setFixedWidth(260)
-        left_layout = QVBoxLayout(left)
+        self.left_panel = QWidget()
+        self.left_panel.setObjectName("LoginRoot")
+        self.left_panel.setFixedWidth(220)
+        left_layout = QVBoxLayout(self.left_panel)
         left_layout.setContentsMargins(28, 32, 28, 28)
         left_layout.setSpacing(0)
 
@@ -115,8 +115,12 @@ class CashierDashboard(QWidget):
         right_layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignHCenter)
         right_layout.addStretch()
 
-        root.addWidget(left)
+        root.addWidget(self.left_panel)
         root.addWidget(right, 1)
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        self.left_panel.setFixedWidth(160 if self.width() < 900 else 220)
 
     def _open_pos_screen(self) -> None:
         session = SessionLocal()

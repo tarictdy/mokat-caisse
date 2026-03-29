@@ -28,7 +28,7 @@ QWidget {
     background-color: #F8FAFC;
     color: #0F172A;
     font-family: "Segoe UI", "Inter", "SF Pro Display", "Arial", sans-serif;
-    font-size: 13px;
+    font-size: 12px;
     selection-background-color: #DBEAFE;
     selection-color: #1E3A8A;
 }
@@ -116,7 +116,7 @@ QLabel#Subtitle {
 QFrame#Card {
     background: #FFFFFF;
     border: 1px solid #E2E8F0;
-    border-radius: 16px;
+    border-radius: 12px;
 }
 
 QFrame#CardElevated {
@@ -159,11 +159,11 @@ QPushButton {
     background-color: #2563EB;
     color: #FFFFFF;
     border: none;
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-size: 13px;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
     font-weight: 600;
-    min-height: 40px;
+    min-height: 34px;
 }
 QPushButton:hover {
     background-color: #1D4ED8;

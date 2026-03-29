@@ -27,8 +27,10 @@ from sqlalchemy import text
 
 from core.app_config import APP_VERSION, BACKUP_PATH, BASE_DIR, DB_PATH
 from core.database import SessionLocal
+from models.maintenance import MaintenanceAudit
 from models.maintenance import MaintenanceRole
 from repositories.maintenance_repo import MaintenanceRepository
+from services.firebase_backup_service import FirebaseBackupService
 from services.maintenance_service import MaintenanceService
 
 
@@ -59,6 +61,7 @@ class MaintenancePage(QWidget):
         super().__init__()
         self.current_user = current_user
         self._authenticated = False
+        self.firebase_backup_service = FirebaseBackupService()
         self._build_ui()
 
     def showEvent(self, event) -> None:  # type: ignore[override]
@@ -118,10 +121,36 @@ class MaintenancePage(QWidget):
         self._load_db_info()
         self._load_logs()
         self._load_security_info()
+        self._load_firebase_status()
 
     def _build_system_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        firebase_card = QFrame()
+        firebase_layout = QVBoxLayout(firebase_card)
+        firebase_title = QLabel("Sauvegarde cloud Firebase")
+        firebase_title.setStyleSheet("font-size: 14px; font-weight: 700;")
+        firebase_layout.addWidget(firebase_title)
+
+        self.firebase_status_label = QLabel("Statut Firebase: -")
+        self.firebase_target_label = QLabel("Projet/Bucket: -")
+        self.firebase_last_sync_label = QLabel("Dernier envoi: -")
+        self.firebase_result_label = QLabel("Resultat: -")
+        for widget in (
+            self.firebase_status_label,
+            self.firebase_target_label,
+            self.firebase_last_sync_label,
+            self.firebase_result_label,
+        ):
+            widget.setStyleSheet("color: #334155; font-size: 12px;")
+            firebase_layout.addWidget(widget)
+
+        send_btn = QPushButton("Envoyer la base vers Firebase")
+        send_btn.setStyleSheet("QPushButton { background: #2563EB; color: white; border-radius: 8px; padding: 10px 14px; }")
+        send_btn.clicked.connect(self._send_db_to_firebase)
+        firebase_layout.addWidget(send_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(firebase_card)
+
         self.system_info = QTextEdit()
         self.system_info.setReadOnly(True)
         layout.addWidget(self.system_info)
@@ -226,6 +255,10 @@ class MaintenancePage(QWidget):
         self.security_table = QTableWidget(0, 6)
         self.security_table.setHorizontalHeaderLabels(["Username", "Role", "Actif", "Cree le", "Dernier acces", "Tentatives"])
         layout.addWidget(self.security_table, 1)
+
+        self.firebase_history_table = QTableWidget(0, 5)
+        self.firebase_history_table.setHorizontalHeaderLabels(["Date", "Niveau", "Evenement", "Message", "Acteur"])
+        layout.addWidget(self.firebase_history_table, 1)
         return tab
 
     def _load_system_info(self) -> None:
@@ -301,6 +334,21 @@ class MaintenancePage(QWidget):
                 continue
             lines.append(line)
         self.logs_output.setPlainText("\n".join(lines) if lines else "Aucun log correspondant.")
+        self._load_firebase_history(audit_logs)
+
+    def _load_firebase_history(self, audit_logs: list[MaintenanceAudit]) -> None:
+        firebase_events = [log for log in audit_logs if log.event_type.startswith("firebase_")]
+        self.firebase_history_table.setRowCount(len(firebase_events))
+        for row, log in enumerate(firebase_events):
+            values = [
+                log.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                log.level,
+                log.event_type,
+                log.message,
+                log.actor or "-",
+            ]
+            for col, value in enumerate(values):
+                self.firebase_history_table.setItem(row, col, QTableWidgetItem(value))
 
     def _load_security_info(self) -> None:
         with SessionLocal() as session:
@@ -317,6 +365,15 @@ class MaintenancePage(QWidget):
             ]
             for col, value in enumerate(values):
                 self.security_table.setItem(row, col, QTableWidgetItem(value))
+
+    def _load_firebase_status(self) -> None:
+        status = self.firebase_backup_service.config_status()
+        self.firebase_status_label.setText(
+            f"Statut Firebase Admin SDK: {'Pret' if status['sdk_available'] == 'oui' else 'Indisponible'}"
+        )
+        self.firebase_target_label.setText(
+            f"Credentials: {status['credentials_path']} | Bucket: {status['bucket']}"
+        )
 
     def _selected_access_username(self) -> str | None:
         row = self.security_table.currentRow()
@@ -398,4 +455,37 @@ class MaintenancePage(QWidget):
                 session.rollback()
                 QMessageBox.warning(self, "Erreur", str(exc))
                 return
+        self._load_logs()
+
+    def _send_db_to_firebase(self) -> None:
+        self.firebase_result_label.setText("Resultat: en cours d'envoi...")
+        self.firebase_result_label.setStyleSheet("color: #1D4ED8; font-size: 12px;")
+        result = self.firebase_backup_service.upload_backup()
+
+        with SessionLocal() as session:
+            repo = MaintenanceRepository(session)
+            level = "INFO" if result.success else "ERROR"
+            event_type = "firebase_backup_success" if result.success else "firebase_backup_failure"
+            detail = result.message
+            if result.success:
+                detail = f"{result.message} objet={result.object_path} taille={result.file_size or 0}"
+            repo.add_audit(
+                MaintenanceAudit(
+                    level=level,
+                    event_type=event_type,
+                    message=detail,
+                    actor=self.current_user,
+                )
+            )
+            session.commit()
+
+        if result.success:
+            self.firebase_last_sync_label.setText(
+                f"Dernier envoi: {result.sent_at.strftime('%Y-%m-%d %H:%M:%S') if result.sent_at else '-'}"
+            )
+            self.firebase_result_label.setText(f"Resultat: succes ({result.file_size or 0} octets)")
+            self.firebase_result_label.setStyleSheet("color: #15803D; font-size: 12px;")
+        else:
+            self.firebase_result_label.setText(f"Resultat: echec - {result.message}")
+            self.firebase_result_label.setStyleSheet("color: #B91C1C; font-size: 12px;")
         self._load_logs()

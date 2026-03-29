@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
@@ -12,6 +15,8 @@ from PyQt6.QtWidgets import (
 
 
 class SplashScreen(QWidget):
+    BRANDING_CANDIDATES = ("splash_branding.png", "splash_branding.jpg", "splash_branding.jpeg")
+
     def __init__(self) -> None:
         super().__init__()
         self.setWindowFlags(
@@ -74,10 +79,28 @@ class SplashScreen(QWidget):
             "letter-spacing: 1.5px; background: transparent;"
         )
 
+        branding = QLabel()
+        branding.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        branding.setStyleSheet("background: transparent;")
+        branding.setVisible(False)
+
+        branding_pixmap = self._load_branding_pixmap()
+        if branding_pixmap is not None:
+            branding.setPixmap(
+                branding_pixmap.scaled(
+                    560,
+                    170,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+            branding.setVisible(True)
+
         card_layout.addLayout(brand_row)
         card_layout.addWidget(div)
         card_layout.addWidget(title)
         card_layout.addWidget(subtitle)
+        card_layout.addWidget(branding)
         card_layout.addWidget(loading)
         card_layout.addStretch()
         card_layout.addWidget(powered, alignment=Qt.AlignmentFlag.AlignRight)
@@ -95,3 +118,15 @@ class SplashScreen(QWidget):
 
     def start(self) -> None:
         self.anim.start()
+
+    def _load_branding_pixmap(self) -> QPixmap | None:
+        project_root = Path(__file__).resolve().parents[3]
+        app_root = Path(__file__).resolve().parents[2]
+        for root in (project_root, app_root):
+            for filename in self.BRANDING_CANDIDATES:
+                candidate = root / filename
+                if candidate.exists():
+                    pixmap = QPixmap(str(candidate))
+                    if not pixmap.isNull():
+                        return pixmap
+        return None

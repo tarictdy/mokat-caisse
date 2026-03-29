@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -16,17 +16,23 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QDialog,
+    QFormLayout,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from core.database import SessionLocal
 from hardware.barcode_scanner import BarcodeScanner
 from models.user import User
+from models.user import UserRole
+from repositories.user_repo import UserRepository
 from services.payment_service import PaymentService
 from services.printer_service import PrinterService
 from services.receipt_service import ReceiptService
 from services.sale_service import CartLine, SaleService
+from services.user_service import UserService
 from ui.sales.cart_widget import CartWidget
 from ui.sales.payment_dialog import PaymentDialog
 from ui.sales.receipt_preview import ReceiptPreview
@@ -37,10 +43,15 @@ class PendingSale:
     ticket_id: int
     created_at: datetime
     lines: list[CartLine]
+    discount_percent: Decimal = Decimal("0")
 
     @property
     def total(self) -> Decimal:
-        return sum((line.total_price for line in self.lines), Decimal("0.00"))
+        subtotal = sum((line.total_price for line in self.lines), Decimal("0.00"))
+        if self.discount_percent <= 0:
+            return subtotal
+        discount_amount = (subtotal * self.discount_percent / Decimal("100")).quantize(Decimal("0.01"))
+        return max(Decimal("0.00"), subtotal - discount_amount)
 
     @property
     def item_count(self) -> int:
@@ -61,6 +72,7 @@ class POSScreen(QWidget):
         self.cart_lines: list[CartLine] = []
         self.pending_sales: list[PendingSale] = []
         self.pending_sale_counter = 1
+        self.discount_percent = Decimal("0")
 
         self.setWindowTitle("MOKAT MARKET — Caisse")
         self.resize(1200, 800)
@@ -484,6 +496,24 @@ class POSScreen(QWidget):
         self.clear_btn.clicked.connect(self._clear_cart)
         util_layout.addWidget(self.clear_btn)
 
+        self.discount_btn = QPushButton("F7  Reduction (%)")
+        self.discount_btn.setMinimumHeight(44)
+        self.discount_btn.setStyleSheet("""
+            QPushButton {
+                background: #ECFDF5;
+                color: #047857;
+                border: 1px solid #A7F3D0;
+                border-radius: 10px;
+                font-size: 13px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #D1FAE5;
+            }
+        """)
+        self.discount_btn.clicked.connect(self._request_discount)
+        util_layout.addWidget(self.discount_btn)
+
         right_layout.addWidget(util_card)
 
         pending_card = QFrame()
@@ -533,7 +563,7 @@ class POSScreen(QWidget):
         right_layout.addStretch()
 
         # Shortcuts hint
-        shortcuts_lbl = QLabel("F1 Especes | F2 Mobile | F3 Supprimer | F4 Attente | F5 Vider | F6 Scan | Ctrl+P Payer | Ctrl+1 Charger attente | Ctrl+2 Payer attente")
+        shortcuts_lbl = QLabel("F1 Especes | F2 Mobile | F3 Supprimer | F4 Attente | F5 Vider | F6 Scan | F7 Reduction | Ctrl+P Payer | Ctrl+1 Charger attente | Ctrl+2 Payer attente")
         shortcuts_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         shortcuts_lbl.setStyleSheet("""
             color: #94A3B8;
@@ -566,6 +596,7 @@ class POSScreen(QWidget):
         QShortcut(QKeySequence("F4"), self).activated.connect(self._hold_current_sale)
         QShortcut(QKeySequence("F5"), self).activated.connect(self._clear_cart)
         QShortcut(QKeySequence("F6"), self).activated.connect(self._focus_scan_input)
+        QShortcut(QKeySequence("F7"), self).activated.connect(self._request_discount)
         QShortcut(QKeySequence("Ctrl+P"), self).activated.connect(self._open_payment)
         QShortcut(QKeySequence("Ctrl+H"), self).activated.connect(self._hold_current_sale)
         QShortcut(QKeySequence("Ctrl+R"), self).activated.connect(self._remove_last_product)
@@ -624,11 +655,13 @@ class POSScreen(QWidget):
             ticket_id=self.pending_sale_counter,
             created_at=datetime.now(),
             lines=deepcopy(self.cart_lines),
+            discount_percent=self.discount_percent,
         )
         self.pending_sale_counter += 1
         self.pending_sales.append(pending_sale)
 
         self.cart_lines = []
+        self.discount_percent = Decimal("0")
         self.cart_widget.load_lines(self.cart_lines)
         self._refresh_total()
         self._refresh_pending_sales_panel()
@@ -717,6 +750,7 @@ class POSScreen(QWidget):
             return
 
         self.cart_lines = deepcopy(pending.lines)
+        self.discount_percent = pending.discount_percent
         self.pending_sales = [sale for sale in self.pending_sales if sale.ticket_id != ticket_id]
         self.cart_widget.load_lines(self.cart_lines)
         self._refresh_total()
@@ -733,7 +767,7 @@ class POSScreen(QWidget):
         if pending is None:
             return
 
-        if self._checkout_lines(deepcopy(pending.lines)):
+        if self._checkout_lines(deepcopy(pending.lines), discount_percent=pending.discount_percent):
             self.pending_sales = [sale for sale in self.pending_sales if sale.ticket_id != ticket_id]
             self._refresh_pending_sales_panel()
 
@@ -750,20 +784,36 @@ class POSScreen(QWidget):
         self._pay_pending_sale(self.pending_sales[0].ticket_id)
 
     def _refresh_total(self) -> Decimal:
-        total = self.sale_service.compute_total(self.cart_lines)
+        subtotal = self.sale_service.compute_total(self.cart_lines)
+        discount_amount = self._compute_discount_amount(subtotal, self.discount_percent)
+        total = subtotal - discount_amount
         self.total_label.setText(f"{int(total):,} FCFA")
         self.cart_count.setText(f"{len(self.cart_lines)} article{'s' if len(self.cart_lines) != 1 else ''}")
+        if discount_amount > 0:
+            self.tax_info.setText(
+                f"Reduction {self._format_decimal(self.discount_percent)}% (-{int(discount_amount):,} FCFA) • TVA incluse"
+            )
+        else:
+            self.tax_info.setText("TVA incluse")
         return total
 
     def _open_payment(self, preferred_channel: str | None = None) -> None:
-        if self._checkout_lines(self.cart_lines, preferred_channel):
+        if self._checkout_lines(self.cart_lines, preferred_channel, self.discount_percent):
             self.cart_lines = []
+            self.discount_percent = Decimal("0")
             self.cart_widget.load_lines(self.cart_lines)
             self._refresh_total()
         self._focus_scan_input()
 
-    def _checkout_lines(self, lines: list[CartLine], preferred_channel: str | None = None) -> bool:
-        total = self.sale_service.compute_total(lines)
+    def _checkout_lines(
+        self,
+        lines: list[CartLine],
+        preferred_channel: str | None = None,
+        discount_percent: Decimal = Decimal("0"),
+    ) -> bool:
+        subtotal = self.sale_service.compute_total(lines)
+        discount_amount = self._compute_discount_amount(subtotal, discount_percent)
+        total = subtotal - discount_amount
         if total <= 0:
             QMessageBox.information(self, "Panier vide", "Scannez au moins un produit avant de payer.")
             return False
@@ -781,6 +831,7 @@ class POSScreen(QWidget):
             dialog.selected_channel,
             lines,
             dialog.transaction_reference,
+            discount_amount=discount_amount,
         )
         receipt = self.receipt_service.build_receipt_text(
             sale, self.cashier, dialog.amount_given, dialog.change, lines
@@ -792,3 +843,91 @@ class POSScreen(QWidget):
         self.preview.set_receipt(receipt)
         self.preview.show()
         return True
+
+    def _compute_discount_amount(self, subtotal: Decimal, discount_percent: Decimal) -> Decimal:
+        if subtotal <= 0 or discount_percent <= 0:
+            return Decimal("0.00")
+        discount_amount = (subtotal * discount_percent / Decimal("100")).quantize(Decimal("0.01"))
+        return max(Decimal("0.00"), min(discount_amount, subtotal))
+
+    def _format_decimal(self, value: Decimal) -> str:
+        normalized = value.normalize()
+        return format(normalized, "f").rstrip("0").rstrip(".") if "." in format(normalized, "f") else format(normalized, "f")
+
+    def _request_discount(self) -> None:
+        if not self.cart_lines:
+            QMessageBox.information(self, "Panier vide", "Ajoutez des produits avant d'appliquer une reduction.")
+            self._focus_scan_input()
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Reduction avec validation administrateur")
+        dialog.setModal(True)
+        layout = QVBoxLayout(dialog)
+        form = QFormLayout()
+
+        percent_input = QLineEdit()
+        percent_input.setPlaceholderText("Ex: 10")
+        percent_input.setText(self._format_decimal(self.discount_percent) if self.discount_percent > 0 else "")
+        form.addRow("Reduction (%)", percent_input)
+
+        username_input = QLineEdit()
+        username_input.setPlaceholderText("Compte administrateur")
+        form.addRow("Utilisateur admin", username_input)
+
+        password_input = QLineEdit()
+        password_input.setPlaceholderText("Mot de passe administrateur")
+        password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        form.addRow("Mot de passe admin", password_input)
+        layout.addLayout(form)
+
+        actions = QHBoxLayout()
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.clicked.connect(dialog.reject)
+        confirm_btn = QPushButton("Valider")
+        confirm_btn.clicked.connect(dialog.accept)
+        actions.addStretch()
+        actions.addWidget(cancel_btn)
+        actions.addWidget(confirm_btn)
+        layout.addLayout(actions)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            self._focus_scan_input()
+            return
+
+        try:
+            reduction_percent = Decimal(percent_input.text().strip())
+        except InvalidOperation:
+            QMessageBox.warning(self, "Reduction invalide", "Le pourcentage de reduction n'est pas valide.")
+            self._focus_scan_input()
+            return
+
+        if reduction_percent < 0 or reduction_percent > 100:
+            QMessageBox.warning(self, "Reduction invalide", "Le pourcentage doit etre compris entre 0 et 100.")
+            self._focus_scan_input()
+            return
+
+        username = username_input.text().strip()
+        password = password_input.text().strip()
+        if not username or not password:
+            QMessageBox.warning(self, "Champs manquants", "Renseignez le compte et le mot de passe administrateur.")
+            self._focus_scan_input()
+            return
+
+        with SessionLocal() as session:
+            user_service = UserService(UserRepository(session))
+            admin_user = user_service.authenticate(username, password)
+
+        if not admin_user or admin_user.role != UserRole.ADMIN:
+            QMessageBox.warning(self, "Validation refusee", "Compte administrateur invalide.")
+            self._focus_scan_input()
+            return
+
+        self.discount_percent = reduction_percent.quantize(Decimal("0.01"))
+        self._refresh_total()
+        QMessageBox.information(
+            self,
+            "Reduction appliquee",
+            f"Reduction de {self._format_decimal(self.discount_percent)}% appliquee avec validation administrateur.",
+        )
+        self._focus_scan_input()

@@ -68,14 +68,17 @@ class SaleService:
         payment_channel: str,
         lines: list[CartLine],
         transaction_reference: str | None = None,
+        discount_amount: Decimal = Decimal("0.00"),
     ) -> Sale:
-        total = self.compute_total(lines)
+        subtotal = self.compute_total(lines)
+        applied_discount = max(Decimal("0.00"), min(discount_amount, subtotal))
+        total = subtotal - applied_discount
         sale = Sale(
             receipt_number=self.build_receipt_number(),
             user_id=user.id,
             total_amount=total,
             tax_amount=Decimal("0.00"),
-            discount_amount=Decimal("0.00"),
+            discount_amount=applied_discount,
             payment_method=payment_method,
             payment_channel=payment_channel,
             transaction_reference=transaction_reference or None,

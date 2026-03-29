@@ -37,17 +37,21 @@ from PyQt6.QtWidgets import (
 from core.database import SessionLocal
 from models.product import Product, ProductStatus
 from models.promotion import Promotion, PromotionType
+from models.charge import Charge, ChargeCategory, ChargeType
 from models.stock_movement import StockMovement, StockMovementType
 from models.user import User, UserRole, UserStatus
 from models.sale import Sale
+from repositories.charge_repo import ChargeRepository
 from repositories.product_repo import ProductRepository
 from repositories.promotion_repo import PromotionRepository
 from repositories.sale_repo import SaleRepository
 from repositories.user_repo import UserRepository
+from services.finance_report_service import FinanceReportService
 from services.product_service import ProductService
 from services.sale_service import SaleService
 from services.user_service import UserService
 from ui.sales.pos_screen import POSScreen
+from ui.settings.maintenance_page import MaintenancePage
 
 
 @dataclass
@@ -135,6 +139,107 @@ class ReportLineChart(QWidget):
         for idx, (label, _) in enumerate(self._points):
             if idx % label_step == 0 or idx == len(self._points) - 1:
                 painter.drawText(xs[idx] - 35, bottom + 10, 70, 24, Qt.AlignmentFlag.AlignCenter, label)
+
+
+class ReportBarChart(QWidget):
+    """Histogramme simple pour comparaisons de totaux."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._bars: list[tuple[str, Decimal]] = []
+        self.setMinimumHeight(240)
+
+    def set_series(self, bars: list[tuple[str, Decimal]]) -> None:
+        self._bars = bars[:12]
+        self.update()
+
+    def paintEvent(self, event) -> None:  # type: ignore[override]
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(self.rect(), QColor("#FFFFFF"))
+
+        rect = self.rect().adjusted(20, 20, -20, -20)
+        if not self._bars:
+            painter.setPen(QColor("#64748B"))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Aucune donnee")
+            return
+
+        max_val = max(float(v) for _, v in self._bars)
+        max_val = max(max_val, 1.0)
+        bottom = rect.bottom() - 28
+        left = rect.left() + 12
+        usable_h = max(20, bottom - rect.top())
+        bar_w = max(16, int((rect.width() - 20) / max(1, len(self._bars) * 1.6)))
+        gap = max(8, int(bar_w * 0.5))
+
+        x = left
+        for label, amount in self._bars:
+            h = int((float(amount) / max_val) * usable_h)
+            y = bottom - h
+            painter.setBrush(QColor("#2563EB"))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(x, y, bar_w, h, 4, 4)
+
+            painter.setPen(QColor("#0F172A"))
+            painter.drawText(x - 12, y - 18, bar_w + 24, 16, Qt.AlignmentFlag.AlignCenter, f"{float(amount):,.0f}")
+            painter.setPen(QColor("#64748B"))
+            painter.drawText(x - 20, bottom + 6, bar_w + 40, 18, Qt.AlignmentFlag.AlignCenter, label[:10])
+            x += bar_w + gap
+
+
+class ReportPieChart(QWidget):
+    """Diagramme circulaire pour repartitions."""
+
+    COLORS = ["#2563EB", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#14B8A6", "#EC4899"]
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._segments: list[tuple[str, Decimal]] = []
+        self.setMinimumHeight(240)
+
+    def set_segments(self, segments: list[tuple[str, Decimal]]) -> None:
+        self._segments = [(label, value) for label, value in segments if value > 0]
+        self.update()
+
+    def paintEvent(self, event) -> None:  # type: ignore[override]
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.fillRect(self.rect(), QColor("#FFFFFF"))
+        rect = self.rect().adjusted(18, 18, -18, -18)
+
+        if not self._segments:
+            painter.setPen(QColor("#64748B"))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "Aucune donnee")
+            return
+
+        total = sum(float(v) for _, v in self._segments)
+        pie_rect = rect.adjusted(10, 10, -max(220, rect.width() // 2), -10)
+        start_angle = 0
+        for idx, (_, value) in enumerate(self._segments):
+            span = int(16 * 360 * (float(value) / total))
+            painter.setBrush(QColor(self.COLORS[idx % len(self.COLORS)]))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawPie(pie_rect, start_angle, span)
+            start_angle += span
+
+        legend_x = pie_rect.right() + 24
+        legend_y = rect.top() + 10
+        for idx, (label, value) in enumerate(self._segments[:7]):
+            color = QColor(self.COLORS[idx % len(self.COLORS)])
+            painter.setBrush(color)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(legend_x, legend_y + idx * 26, 12, 12, 3, 3)
+            painter.setPen(QColor("#0F172A"))
+            painter.drawText(
+                legend_x + 18,
+                legend_y + idx * 26 - 1,
+                max(120, rect.right() - legend_x - 20),
+                16,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                f"{label[:20]}: {float(value):,.0f}",
+            )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -584,6 +689,99 @@ class UserCreateDialog(QDialog):
         main_layout.addWidget(footer)
 
 
+class ChargeCreateDialog(QDialog):
+    def __init__(self, parent: QWidget | None = None, charge: Charge | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Nouvelle charge" if charge is None else "Modifier charge")
+        self.setModal(True)
+        self.setMinimumSize(520, 520)
+        self.setStyleSheet("""
+            QDialog { background: #F8FAFC; }
+            QLabel { color: #374151; font-size: 13px; font-weight: 500; }
+            QLineEdit, QComboBox, QDateEdit, QTextEdit {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {
+                border: 2px solid #2563EB;
+            }
+        """)
+
+        self._editing_charge = charge
+        main_layout = QVBoxLayout(self)
+
+        form = QFormLayout()
+        form.setSpacing(12)
+
+        self.category_box = QComboBox()
+        for category in ChargeCategory:
+            self.category_box.addItem(category.value.replace("_", " ").title(), category)
+
+        self.type_box = QComboBox()
+        self.type_box.addItem("Fixe", ChargeType.FIXE)
+        self.type_box.addItem("Variable", ChargeType.VARIABLE)
+        self.type_box.addItem("Salariale", ChargeType.SALARIALE)
+        self.type_box.addItem("Diverse", ChargeType.DIVERSE)
+
+        self.label_input = QLineEdit()
+        self.label_input.setPlaceholderText("Ex: Paiement loyer boutique")
+        self.amount_input = QLineEdit()
+        self.amount_input.setPlaceholderText("Ex: 150000")
+
+        self.date_input = QDateEdit()
+        self.date_input.setCalendarPopup(True)
+        self.date_input.setDate(QDate.currentDate())
+
+        self.month_input = QLineEdit()
+        self.month_input.setPlaceholderText("YYYY-MM")
+        self.month_input.setText(QDate.currentDate().toString("yyyy-MM"))
+
+        self.description_input = QTextEdit()
+        self.description_input.setPlaceholderText("Note optionnelle")
+        self.description_input.setFixedHeight(90)
+
+        form.addRow("Categorie", self.category_box)
+        form.addRow("Type charge", self.type_box)
+        form.addRow("Libelle", self.label_input)
+        form.addRow("Montant (FCFA)", self.amount_input)
+        form.addRow("Date charge", self.date_input)
+        form.addRow("Mois comptable", self.month_input)
+        form.addRow("Description", self.description_input)
+        main_layout.addLayout(form)
+
+        actions = QHBoxLayout()
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.clicked.connect(self.reject)
+        save_btn = QPushButton("Enregistrer")
+        save_btn.clicked.connect(self.accept)
+        actions.addStretch()
+        actions.addWidget(cancel_btn)
+        actions.addWidget(save_btn)
+        main_layout.addLayout(actions)
+
+        if charge is not None:
+            self._fill_from_charge(charge)
+
+    def _fill_from_charge(self, charge: Charge) -> None:
+        self.label_input.setText(charge.label)
+        self.amount_input.setText(f"{Decimal(str(charge.amount)):.0f}")
+        self.month_input.setText(charge.accounting_month)
+        self.description_input.setText(charge.description or "")
+        self.date_input.setDate(QDate(charge.charge_date.year, charge.charge_date.month, charge.charge_date.day))
+
+        for idx in range(self.category_box.count()):
+            if self.category_box.itemData(idx) == charge.category:
+                self.category_box.setCurrentIndex(idx)
+                break
+        for idx in range(self.type_box.count()):
+            if self.type_box.itemData(idx) == charge.charge_type:
+                self.type_box.setCurrentIndex(idx)
+                break
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ADMIN DASHBOARD - Interface principale
 # ══════════════════════════════════════════════════════════════════════════════
@@ -593,6 +791,7 @@ class AdminDashboard(QWidget):
         super().__init__()
         self.user = user
         self._pos_windows: list[POSScreen] = []
+        self.finance_service = FinanceReportService()
         self.setWindowTitle("MOKAT MARKET — Administration")
         self.resize(1400, 900)
         self.setStyleSheet("background: #F1F5F9;")
@@ -604,15 +803,15 @@ class AdminDashboard(QWidget):
         # ══════════════════════════════════════════════════════════════════════
         # SIDEBAR - Navigation gauche
         # ══════════════════════════════════════════════════════════════════════
-        sidebar = QWidget()
-        sidebar.setFixedWidth(260)
-        sidebar.setStyleSheet("""
+        self.sidebar = QWidget()
+        self.sidebar.setFixedWidth(240)
+        self.sidebar.setStyleSheet("""
             QWidget {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #0F172A, stop:1 #1E293B);
             }
         """)
-        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
 
@@ -742,7 +941,7 @@ class AdminDashboard(QWidget):
         uf_layout.addWidget(logout_btn)
         sidebar_layout.addWidget(user_footer)
 
-        root.addWidget(sidebar)
+        root.addWidget(self.sidebar)
 
         # ══════════════════════════════════════════════════════════════════════
         # MAIN CONTENT
@@ -766,7 +965,7 @@ class AdminDashboard(QWidget):
         self.stock_page = self._build_stock_page()
         self.pos_page = self._build_pos_page()
         self.reports_page = self._build_reports_page()
-        self.settings_page = self._build_placeholder_page("Parametres", "Configuration du systeme")
+        self.settings_page = MaintenancePage(f"{self.user.prenom} {self.user.nom}")
 
         for page in [
             self.dashboard_page, self.products_page, self.promotions_page,
@@ -781,6 +980,16 @@ class AdminDashboard(QWidget):
 
         root.addWidget(content, 1)
         self.refresh_dashboard()
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        width = self.width()
+        if width < 1100:
+            self.sidebar.setFixedWidth(180)
+        elif width < 1360:
+            self.sidebar.setFixedWidth(210)
+        else:
+            self.sidebar.setFixedWidth(240)
 
     def _populate_sidebar(self) -> None:
         items = [
@@ -1502,9 +1711,11 @@ class AdminDashboard(QWidget):
         self.report_end_date.setCalendarPopup(True)
         self.report_end_date.setDate(QDate.currentDate())
         self.report_group_by = QComboBox()
-        self.report_group_by.addItems(["Par jour", "Par mois"])
+        self.report_group_by.addItems(["Par jour", "Par semaine", "Par mois"])
+        self.report_month_filter = QComboBox()
+        self.report_month_filter.addItems(["Periode personnalisee", "Mois en cours", "Mois precedent"])
 
-        for w in (self.report_start_date, self.report_end_date, self.report_group_by):
+        for w in (self.report_start_date, self.report_end_date, self.report_group_by, self.report_month_filter):
             w.setStyleSheet(
                 "QDateEdit, QComboBox { background: #F8FAFC; border: 1px solid #E2E8F0; "
                 "border-radius: 10px; padding: 10px 12px; }"
@@ -1514,11 +1725,14 @@ class AdminDashboard(QWidget):
         self.report_refresh_btn.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; } QPushButton:hover { background: #1D4ED8; }")
         self.report_refresh_btn.clicked.connect(self._refresh_reports_data)
         self.report_group_by.currentIndexChanged.connect(lambda _=None: self._refresh_reports_data())
+        self.report_month_filter.currentIndexChanged.connect(self._apply_report_month_filter)
 
         filters_layout.addWidget(QLabel("Du"))
         filters_layout.addWidget(self.report_start_date)
         filters_layout.addWidget(QLabel("Au"))
         filters_layout.addWidget(self.report_end_date)
+        filters_layout.addWidget(QLabel("Filtre mois"))
+        filters_layout.addWidget(self.report_month_filter)
         filters_layout.addWidget(QLabel("Vue"))
         filters_layout.addWidget(self.report_group_by)
         filters_layout.addStretch()
@@ -1529,7 +1743,11 @@ class AdminDashboard(QWidget):
         cards.setSpacing(14)
         self.report_sales_count = self._create_stat_card(cards, "Ventes", "0", "#2563EB", "🧾")
         self.report_revenue_total = self._create_stat_card(cards, "CA total", "0 FCFA", "#10B981", "💰")
-        self.report_avg_ticket = self._create_stat_card(cards, "Ticket moyen", "0 FCFA", "#8B5CF6", "📊")
+        self.report_avg_ticket = self._create_stat_card(cards, "Ticket moyen", "0 FCFA", "#14B8A6", "🎯")
+        self.report_cogs_total = self._create_stat_card(cards, "Cout vendu", "0 FCFA", "#F59E0B", "📦")
+        self.report_gross_profit = self._create_stat_card(cards, "Benefice brut", "0 FCFA", "#8B5CF6", "📈")
+        self.report_charges_total = self._create_stat_card(cards, "Charges", "0 FCFA", "#EF4444", "🧾")
+        self.report_net_profit = self._create_stat_card(cards, "Benefice net", "0 FCFA", "#0EA5E9", "🏁")
         layout.addLayout(cards)
 
         report_card = QFrame()
@@ -1542,6 +1760,18 @@ class AdminDashboard(QWidget):
         self.report_channel_summary.setStyleSheet("font-size: 13px; color: #475569;")
         report_layout.addWidget(self.report_channel_summary)
 
+        self.report_finance_summary = QLabel("Charges: -")
+        self.report_finance_summary.setStyleSheet("font-size: 13px; color: #475569;")
+        report_layout.addWidget(self.report_finance_summary)
+
+        self.report_trend_summary = QLabel("Tendance: -")
+        self.report_trend_summary.setStyleSheet("font-size: 13px; color: #334155; font-weight: 600;")
+        report_layout.addWidget(self.report_trend_summary)
+
+        self.report_alerts = QLabel("Alertes: -")
+        self.report_alerts.setStyleSheet("font-size: 13px; color: #B45309;")
+        report_layout.addWidget(self.report_alerts)
+
         self.report_performance_title = QLabel("Courbe de performance des ventes")
         self.report_performance_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
         report_layout.addWidget(self.report_performance_title)
@@ -1551,7 +1781,7 @@ class AdminDashboard(QWidget):
         report_layout.addWidget(self.report_chart)
 
         self.report_period_table = QTableWidget(0, 4)
-        self.report_period_table.setHorizontalHeaderLabels(["Periode", "Nb ventes", "CA", "Ticket moyen"])
+        self.report_period_table.setHorizontalHeaderLabels(["Periode", "Nb ventes", "CA", "Resultat net provisoire"])
         self._style_table(self.report_period_table)
         report_layout.addWidget(self.report_period_table)
 
@@ -1560,6 +1790,86 @@ class AdminDashboard(QWidget):
         self._style_table(self.reports_table)
         report_layout.addWidget(self.reports_table)
 
+        advanced_card = QFrame()
+        advanced_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        advanced_layout = QVBoxLayout(advanced_card)
+        advanced_layout.setContentsMargins(20, 20, 20, 20)
+        advanced_layout.setSpacing(12)
+
+        advanced_title = QLabel("Tableau de bord analytique avance")
+        advanced_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        advanced_layout.addWidget(advanced_title)
+
+        chart_grid = QGridLayout()
+        chart_grid.setSpacing(12)
+
+        self.sales_trend_chart = ReportLineChart()
+        self.charges_trend_chart = ReportLineChart()
+        self.gross_trend_chart = ReportLineChart()
+        self.net_trend_chart = ReportLineChart()
+        self.charge_category_bar = ReportBarChart()
+        self.promo_impact_pie = ReportPieChart()
+
+        for widget in (
+            self.sales_trend_chart,
+            self.charges_trend_chart,
+            self.gross_trend_chart,
+            self.net_trend_chart,
+            self.charge_category_bar,
+            self.promo_impact_pie,
+        ):
+            widget.setStyleSheet("border: 1px solid #E2E8F0; border-radius: 12px; background: #FFFFFF;")
+
+        chart_grid.addWidget(QLabel("Evolution ventes"), 0, 0)
+        chart_grid.addWidget(QLabel("Evolution charges"), 0, 1)
+        chart_grid.addWidget(self.sales_trend_chart, 1, 0)
+        chart_grid.addWidget(self.charges_trend_chart, 1, 1)
+        chart_grid.addWidget(QLabel("Evolution benefice brut"), 2, 0)
+        chart_grid.addWidget(QLabel("Evolution benefice net"), 2, 1)
+        chart_grid.addWidget(self.gross_trend_chart, 3, 0)
+        chart_grid.addWidget(self.net_trend_chart, 3, 1)
+        chart_grid.addWidget(QLabel("Charges par categorie"), 4, 0)
+        chart_grid.addWidget(QLabel("Impact promotions"), 4, 1)
+        chart_grid.addWidget(self.charge_category_bar, 5, 0)
+        chart_grid.addWidget(self.promo_impact_pie, 5, 1)
+        advanced_layout.addLayout(chart_grid)
+
+        layout.addWidget(advanced_card)
+        charges_card = QFrame()
+        charges_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        charges_layout = QVBoxLayout(charges_card)
+        charges_layout.setContentsMargins(20, 20, 20, 20)
+        charges_layout.setSpacing(12)
+
+        charges_header = QHBoxLayout()
+        charges_title = QLabel("Charges d'exploitation")
+        charges_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        charges_header.addWidget(charges_title)
+        charges_header.addStretch()
+
+        add_charge_btn = QPushButton("+ Ajouter charge")
+        add_charge_btn.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 8px; padding: 10px 14px; font-weight: 600; }")
+        add_charge_btn.clicked.connect(self._create_charge)
+        edit_charge_btn = QPushButton("Modifier")
+        edit_charge_btn.setStyleSheet("QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 8px; padding: 10px 14px; font-weight: 600; }")
+        edit_charge_btn.clicked.connect(self._edit_selected_charge)
+        delete_charge_btn = QPushButton("Supprimer")
+        delete_charge_btn.setStyleSheet("QPushButton { background: #FEE2E2; color: #DC2626; border: none; border-radius: 8px; padding: 10px 14px; font-weight: 600; }")
+        delete_charge_btn.clicked.connect(self._delete_selected_charge)
+        charges_header.addWidget(add_charge_btn)
+        charges_header.addWidget(edit_charge_btn)
+        charges_header.addWidget(delete_charge_btn)
+        charges_layout.addLayout(charges_header)
+
+        self.charges_table = QTableWidget(0, 8)
+        self.charges_table.setHorizontalHeaderLabels(
+            ["ID", "Date", "Mois", "Categorie", "Type", "Libelle", "Montant", "Description"]
+        )
+        self._style_table(self.charges_table)
+        self.charges_table.setMinimumHeight(220)
+        charges_layout.addWidget(self.charges_table)
+
+        layout.addWidget(charges_card)
         layout.addWidget(report_card, 1)
         return page
 
@@ -1613,6 +1923,8 @@ class AdminDashboard(QWidget):
             self._refresh_stock_history()
         if row == 6:
             self._refresh_reports_data()
+        if row == 7 and hasattr(self.settings_page, "refresh_data"):
+            self.settings_page.refresh_data()
 
     def _open_pos_screen(self) -> None:
         session = SessionLocal()
@@ -1758,18 +2070,14 @@ class AdminDashboard(QWidget):
         end_dt = datetime.combine(end_date + timedelta(days=1), datetime.min.time())
 
         with SessionLocal() as session:
-            sales = list(
-                session.query(Sale)
-                .filter(Sale.created_at >= start_dt, Sale.created_at < end_dt)
-                .order_by(Sale.created_at.desc())
-                .limit(300)
-                .all()
-            )
+            sales = self.finance_service.fetch_sales(session, start_dt, end_dt)
+            charges = self.finance_service.fetch_charges(session, start_date, end_date)
+            finance_summary = self.finance_service.summarize(session, sales, charges)
             users_map = {u.id: u.username for u in session.query(User).all()}
 
-        total_revenue = sum((Decimal(str(s.total_amount)) for s in sales), Decimal("0.00"))
-        sales_count = len(sales)
-        avg_ticket = (total_revenue / sales_count) if sales_count else Decimal("0.00")
+        total_revenue = finance_summary.revenue
+        sales_count = finance_summary.sales_count
+        avg_ticket = finance_summary.average_ticket
         group_mode = self.report_group_by.currentText() if hasattr(self, "report_group_by") else "Par jour"
 
         by_channel: dict[str, Decimal] = {}
@@ -1781,6 +2089,10 @@ class AdminDashboard(QWidget):
             if group_mode == "Par mois":
                 key = sale.created_at.strftime("%Y-%m")
                 label = sale.created_at.strftime("%m/%Y")
+            elif group_mode == "Par semaine":
+                year, week, _ = sale.created_at.isocalendar()
+                key = f"{year}-W{week:02d}"
+                label = f"S{week:02d}-{year}"
             else:
                 key = sale.created_at.strftime("%Y-%m-%d")
                 label = sale.created_at.strftime("%d/%m/%Y")
@@ -1790,18 +2102,81 @@ class AdminDashboard(QWidget):
                     "label": label,
                     "count": 0,
                     "revenue": Decimal("0.00"),
+                    "charges": Decimal("0.00"),
+                    "cogs": Decimal("0.00"),
                 }
             grouped_sales[key]["count"] = int(grouped_sales[key]["count"]) + 1
             grouped_sales[key]["revenue"] = Decimal(str(grouped_sales[key]["revenue"])) + Decimal(str(sale.total_amount))
 
+        for charge in charges:
+            if group_mode == "Par mois":
+                key = charge.charge_date.strftime("%Y-%m")
+                label = charge.charge_date.strftime("%m/%Y")
+            elif group_mode == "Par semaine":
+                year, week, _ = charge.charge_date.isocalendar()
+                key = f"{year}-W{week:02d}"
+                label = f"S{week:02d}-{year}"
+            else:
+                key = charge.charge_date.strftime("%Y-%m-%d")
+                label = charge.charge_date.strftime("%d/%m/%Y")
+            if key not in grouped_sales:
+                grouped_sales[key] = {"label": label, "count": 0, "revenue": Decimal("0.00"), "charges": Decimal("0.00"), "cogs": Decimal("0.00")}
+            grouped_sales[key]["charges"] = Decimal(str(grouped_sales[key]["charges"])) + Decimal(str(charge.amount))
+
         self.report_sales_count.setText(str(sales_count))
         self.report_revenue_total.setText(f"{total_revenue:,.0f} FCFA")
         self.report_avg_ticket.setText(f"{avg_ticket:,.0f} FCFA")
+        self.report_cogs_total.setText(f"{finance_summary.cogs:,.0f} FCFA")
+        self.report_gross_profit.setText(f"{finance_summary.gross_profit:,.0f} FCFA")
+        self.report_charges_total.setText(f"{finance_summary.total_charges:,.0f} FCFA")
+        self.report_net_profit.setText(f"{finance_summary.net_profit:,.0f} FCFA")
         if by_channel:
             summary = " | ".join(f"{ch}: {amt:,.0f} FCFA" for ch, amt in sorted(by_channel.items()))
             self.report_channel_summary.setText(f"Repartition des paiements: {summary}")
         else:
             self.report_channel_summary.setText("Repartition des paiements: aucune vente")
+        self.report_finance_summary.setText(
+            "Charges details — "
+            f"Salaires: {finance_summary.salary_charges:,.0f} FCFA | "
+            f"Fixes: {finance_summary.fixed_charges:,.0f} FCFA | "
+            f"Variables: {finance_summary.variable_charges:,.0f} FCFA"
+        )
+
+        period_days = max(1, (end_date - start_date).days + 1)
+        prev_end = start_date - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=period_days - 1)
+        prev_start_dt = datetime.combine(prev_start, datetime.min.time())
+        prev_end_dt = datetime.combine(prev_end + timedelta(days=1), datetime.min.time())
+        with SessionLocal() as session:
+            previous_sales = self.finance_service.fetch_sales(session, prev_start_dt, prev_end_dt)
+            previous_charges = self.finance_service.fetch_charges(session, prev_start, prev_end)
+            prev_summary = self.finance_service.summarize(session, previous_sales, previous_charges)
+
+        def _delta_pct(current: Decimal, previous: Decimal) -> str:
+            if previous == 0:
+                return "+100%" if current > 0 else "0%"
+            pct = ((current - previous) / previous) * Decimal("100")
+            return f"{pct:+.1f}%"
+
+        self.report_trend_summary.setText(
+            "Resume automatique — "
+            f"Ventes: {_delta_pct(finance_summary.revenue, prev_summary.revenue)} | "
+            f"Charges: {_delta_pct(finance_summary.total_charges, prev_summary.total_charges)} | "
+            f"Benefice net: {_delta_pct(finance_summary.net_profit, prev_summary.net_profit)}"
+        )
+
+        alerts: list[str] = []
+        if finance_summary.revenue < prev_summary.revenue:
+            alerts.append("⚠️ Baisse des ventes")
+        if finance_summary.total_charges > prev_summary.total_charges:
+            alerts.append("⚠️ Hausse des charges")
+        if finance_summary.net_profit < 0:
+            alerts.append("❌ Benefice net negatif")
+        promo_discount_total = sum((Decimal(str(s.discount_amount)) for s in sales), Decimal("0.00"))
+        promo_sales_count = sum(1 for s in sales if Decimal(str(s.discount_amount)) > 0)
+        if promo_discount_total > 0 and finance_summary.gross_profit <= promo_discount_total:
+            alerts.append("⚠️ Promotions potentiellement non rentables")
+        self.report_alerts.setText("Alertes: " + (" | ".join(alerts) if alerts else "✅ Aucune alerte critique"))
 
         ordered_periods = sorted(grouped_sales.items(), key=lambda item: item[0])
         chart_points = [
@@ -1809,20 +2184,44 @@ class AdminDashboard(QWidget):
             for _, data in ordered_periods
         ]
         self.report_chart.set_series(chart_points)
+        self.sales_trend_chart.set_series(chart_points)
+        self.charges_trend_chart.set_series(
+            [(str(data["label"]), Decimal(str(data["charges"]))) for _, data in ordered_periods]
+        )
+        self.gross_trend_chart.set_series(
+            [
+                (
+                    str(data["label"]),
+                    max(Decimal("0.00"), Decimal(str(data["revenue"])) - Decimal(str(data["charges"]))),
+                )
+                for _, data in ordered_periods
+            ]
+        )
+        self.net_trend_chart.set_series(
+            [
+                (
+                    str(data["label"]),
+                    Decimal(str(data["revenue"])) - Decimal(str(data["charges"])),
+                )
+                for _, data in ordered_periods
+            ]
+        )
+        mode_label = "jour" if group_mode == "Par jour" else ("semaine" if group_mode == "Par semaine" else "mois")
         self.report_performance_title.setText(
-            f"Courbe de performance des ventes ({'jour' if group_mode == 'Par jour' else 'mois'})"
+            f"Courbe de performance des ventes ({mode_label})"
         )
 
         self.report_period_table.setRowCount(len(ordered_periods))
         for row, (_, data) in enumerate(ordered_periods):
             period_revenue = Decimal(str(data["revenue"]))
             period_count = int(data["count"])
-            period_avg = (period_revenue / period_count) if period_count else Decimal("0.00")
+            period_charges = Decimal(str(data["charges"]))
+            period_net = period_revenue - period_charges
             values = [
                 data["label"],
                 period_count,
                 f"{period_revenue:,.0f} FCFA",
-                f"{period_avg:,.0f} FCFA",
+                f"{period_net:,.0f} FCFA",
             ]
             for col, val in enumerate(values):
                 self.report_period_table.setItem(row, col, QTableWidgetItem(str(val)))
@@ -1839,6 +2238,38 @@ class AdminDashboard(QWidget):
             ]
             for col, val in enumerate(values):
                 self.reports_table.setItem(row, col, QTableWidgetItem(str(val)))
+
+        charges_by_category: dict[str, Decimal] = {}
+        for charge in charges:
+            key = charge.category.value
+            charges_by_category.setdefault(key, Decimal("0.00"))
+            charges_by_category[key] += Decimal(str(charge.amount))
+        self.charge_category_bar.set_series(
+            sorted(charges_by_category.items(), key=lambda item: item[1], reverse=True)[:8]
+        )
+        self.promo_impact_pie.set_segments(
+            [
+                ("Ventes avec promo", Decimal(promo_sales_count)),
+                ("Ventes sans promo", Decimal(max(0, len(sales) - promo_sales_count))),
+                ("Remises accordees", promo_discount_total),
+            ]
+        )
+
+        if hasattr(self, "charges_table"):
+            self.charges_table.setRowCount(len(charges))
+            for row, charge in enumerate(charges):
+                values = [
+                    charge.id,
+                    charge.charge_date.strftime("%Y-%m-%d"),
+                    charge.accounting_month,
+                    charge.category.value,
+                    charge.charge_type.value,
+                    charge.label,
+                    f"{Decimal(str(charge.amount)):,.0f}",
+                    charge.description or "-",
+                ]
+                for col, val in enumerate(values):
+                    self.charges_table.setItem(row, col, QTableWidgetItem(str(val)))
 
     def _refresh_products_table(self) -> None:
         query = self.products_search_input.text().strip()
@@ -2155,6 +2586,121 @@ class AdminDashboard(QWidget):
             )
             session.commit()
         self.refresh_dashboard()
+
+    def _apply_report_month_filter(self, index: int) -> None:
+        if not hasattr(self, "report_start_date"):
+            return
+        today = date.today()
+        if index == 1:
+            start = date(today.year, today.month, 1)
+            end = today
+        elif index == 2:
+            first_of_month = date(today.year, today.month, 1)
+            prev_last = first_of_month - timedelta(days=1)
+            start = date(prev_last.year, prev_last.month, 1)
+            end = prev_last
+        else:
+            return
+        self.report_start_date.setDate(QDate(start.year, start.month, start.day))
+        self.report_end_date.setDate(QDate(end.year, end.month, end.day))
+        self._refresh_reports_data()
+
+    def _selected_charge_id(self) -> int | None:
+        if not hasattr(self, "charges_table"):
+            return None
+        row = self.charges_table.currentRow()
+        if row < 0:
+            return None
+        item = self.charges_table.item(row, 0)
+        if not item:
+            return None
+        try:
+            return int(item.text())
+        except ValueError:
+            return None
+
+    def _create_charge(self) -> None:
+        dialog = ChargeCreateDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        try:
+            amount = Decimal(dialog.amount_input.text().strip())
+        except InvalidOperation:
+            QMessageBox.warning(self, "Erreur", "Montant invalide")
+            return
+        if amount <= 0:
+            QMessageBox.warning(self, "Erreur", "Le montant doit etre superieur a zero")
+            return
+
+        qd = dialog.date_input.date()
+        charge_date = date(qd.year(), qd.month(), qd.day())
+        accounting_month = dialog.month_input.text().strip() or charge_date.strftime("%Y-%m")
+
+        with SessionLocal() as session:
+            repo = ChargeRepository(session)
+            repo.add(
+                Charge(
+                    category=dialog.category_box.currentData(),
+                    charge_type=dialog.type_box.currentData(),
+                    label=dialog.label_input.text().strip() or "Charge",
+                    description=dialog.description_input.toPlainText().strip() or None,
+                    amount=amount,
+                    charge_date=charge_date,
+                    accounting_month=accounting_month,
+                    user_id=self.user.id,
+                    is_deleted=False,
+                )
+            )
+            session.commit()
+        self._refresh_reports_data()
+
+    def _edit_selected_charge(self) -> None:
+        charge_id = self._selected_charge_id()
+        if not charge_id:
+            QMessageBox.information(self, "Information", "Selectionnez une charge.")
+            return
+        with SessionLocal() as session:
+            repo = ChargeRepository(session)
+            charge = repo.get_by_id(charge_id)
+            if not charge or charge.is_deleted:
+                QMessageBox.warning(self, "Erreur", "Charge introuvable")
+                return
+
+            dialog = ChargeCreateDialog(self, charge=charge)
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            try:
+                amount = Decimal(dialog.amount_input.text().strip())
+            except InvalidOperation:
+                QMessageBox.warning(self, "Erreur", "Montant invalide")
+                return
+            qd = dialog.date_input.date()
+            charge.charge_date = date(qd.year(), qd.month(), qd.day())
+            charge.accounting_month = dialog.month_input.text().strip() or charge.charge_date.strftime("%Y-%m")
+            charge.category = dialog.category_box.currentData()
+            charge.charge_type = dialog.type_box.currentData()
+            charge.label = dialog.label_input.text().strip() or "Charge"
+            charge.description = dialog.description_input.toPlainText().strip() or None
+            charge.amount = amount
+            session.commit()
+        self._refresh_reports_data()
+
+    def _delete_selected_charge(self) -> None:
+        charge_id = self._selected_charge_id()
+        if not charge_id:
+            QMessageBox.information(self, "Information", "Selectionnez une charge.")
+            return
+        if QMessageBox.question(self, "Confirmation", "Supprimer cette charge ?") != QMessageBox.StandardButton.Yes:
+            return
+        with SessionLocal() as session:
+            repo = ChargeRepository(session)
+            charge = repo.get_by_id(charge_id)
+            if not charge:
+                QMessageBox.warning(self, "Erreur", "Charge introuvable")
+                return
+            charge.is_deleted = True
+            session.commit()
+        self._refresh_reports_data()
 
     def refresh_dashboard(self) -> None:
         stats = self._load_stats()

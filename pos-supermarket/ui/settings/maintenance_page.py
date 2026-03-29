@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QTabWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -82,6 +83,8 @@ class MaintenancePage(QWidget):
         layout.addWidget(title)
 
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.setUsesScrollButtons(True)
         layout.addWidget(self.tabs, 1)
 
         self.system_tab = self._build_system_tab()
@@ -170,6 +173,7 @@ class MaintenancePage(QWidget):
         table = QTableWidget(0, 4)
         table.setHorizontalHeaderLabels(["Module", "Statut", "Service principal", "Dependances"])
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._configure_table(table)
         modules = [
             ("Authentification", "ui.login.login_window", "UserService", "UserRepository -> SQLite"),
             ("Dashboard Admin", "ui.dashboard.admin_dashboard", "FinanceReportService", "Sale/Charge repos"),
@@ -198,6 +202,7 @@ class MaintenancePage(QWidget):
         self.flow_table = QTableWidget(0, 5)
         self.flow_table.setHorizontalHeaderLabels(["UI Source", "Service", "Repository", "Base/Infra", "But"])
         self.flow_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._configure_table(self.flow_table)
         flow_rows = [
             ("LoginWindow", "UserService", "UserRepository", "SQLite", "Authentification utilisateur"),
             ("POSScreen", "SaleService", "SaleRepository/ProductRepository", "SQLite", "Encaissement + stock"),
@@ -219,6 +224,7 @@ class MaintenancePage(QWidget):
         self.files_table = QTableWidget(0, 6)
         self.files_table.setHorizontalHeaderLabels(["Nom", "Chemin", "Existe", "Taille", "Derniere modif", "Acces"])
         self.files_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._configure_table(self.files_table)
         layout.addWidget(self.files_table)
         return tab
 
@@ -230,6 +236,7 @@ class MaintenancePage(QWidget):
         self.db_tables = QTableWidget(0, 2)
         self.db_tables.setHorizontalHeaderLabels(["Table", "Nombre lignes"])
         self.db_tables.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._configure_table(self.db_tables)
         layout.addWidget(self.db_summary)
         layout.addWidget(self.db_tables)
         return tab
@@ -262,6 +269,7 @@ class MaintenancePage(QWidget):
         layout.addLayout(filters)
         self.logs_output = QTextEdit()
         self.logs_output.setReadOnly(True)
+        self.logs_output.setMinimumHeight(320)
         layout.addWidget(self.logs_output)
         return tab
 
@@ -284,13 +292,26 @@ class MaintenancePage(QWidget):
         self.security_table = QTableWidget(0, 6)
         self.security_table.setHorizontalHeaderLabels(["Username", "Role", "Actif", "Cree le", "Dernier acces", "Tentatives"])
         self.security_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        layout.addWidget(self.security_table, 1)
+        self._configure_table(self.security_table)
 
         self.firebase_history_table = QTableWidget(0, 5)
         self.firebase_history_table.setHorizontalHeaderLabels(["Date", "Niveau", "Evenement", "Message", "Acteur"])
         self.firebase_history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        layout.addWidget(self.firebase_history_table, 1)
+        self._configure_table(self.firebase_history_table)
+
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.addWidget(self.security_table)
+        splitter.addWidget(self.firebase_history_table)
+        splitter.setSizes([280, 260])
+        layout.addWidget(splitter, 1)
         return tab
+
+    def _configure_table(self, table: QTableWidget) -> None:
+        table.setAlternatingRowColors(True)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        table.verticalHeader().setVisible(False)
+        table.setSortingEnabled(False)
 
     def _load_system_info(self) -> None:
         info = [

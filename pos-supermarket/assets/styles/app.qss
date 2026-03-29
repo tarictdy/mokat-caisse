@@ -265,6 +265,52 @@ QTextEdit {
     min-height: 42px;
     selection-background-color: #DBEAFE;
 }
+
+/* ── Unified App Layout (except login) ───────────────────────── */
+QWidget#AppSurface {
+    background: #F3F6FB;
+}
+
+QFrame#LayoutContainer {
+    background: transparent;
+    border: none;
+    padding: 8px;
+}
+
+QFrame#SectionCard {
+    background: #FFFFFF;
+    border: 1px solid #DEE7F3;
+    border-radius: 12px;
+}
+
+QLabel#CompactTitle {
+    color: #0F172A;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+QLabel#CompactSubtitle {
+    color: #64748B;
+    font-size: 11px;
+}
+
+QTableWidget {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    gridline-color: #EEF2F7;
+    alternate-background-color: #F8FAFD;
+}
+
+QHeaderView::section {
+    background: #F8FAFD;
+    color: #334155;
+    padding: 6px;
+    border: none;
+    border-bottom: 1px solid #E2E8F0;
+    font-size: 11px;
+    font-weight: 600;
+}
 QLineEdit:hover,
 QComboBox:hover,
 QSpinBox:hover,

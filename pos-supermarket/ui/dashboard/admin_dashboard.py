@@ -794,13 +794,13 @@ class AdminDashboard(QWidget):
         self.finance_service = FinanceReportService()
         self.setWindowTitle("MOKAT MARKET — Administration")
         self.resize(1400, 900)
-        self.setStyleSheet("background: #F1F5F9;")
+        self.setStyleSheet("background: #FAFAFA;")
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ══════════════════════════════════════════════════════════════════════
+        # ═════════════════════════���════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
@@ -808,7 +808,7 @@ class AdminDashboard(QWidget):
         self.sidebar.setStyleSheet("""
             QWidget {
                 background: #FFFFFF;
-                border-right: 1px solid #E2E8F0;
+                border-right: 1px solid #EAEAEA;
             }
         """)
         sidebar_layout = QVBoxLayout(self.sidebar)
@@ -826,7 +826,7 @@ class AdminDashboard(QWidget):
         logo_circle.setFixedSize(42, 42)
         logo_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo_circle.setStyleSheet("""
-            background: #2563EB;
+            background: #000000;
             color: #FFFFFF;
             font-size: 18px;
             font-weight: 800;
@@ -835,9 +835,9 @@ class AdminDashboard(QWidget):
         brand_text = QVBoxLayout()
         brand_text.setSpacing(2)
         brand_name = QLabel("MOKAT")
-        brand_name.setStyleSheet("color: #0F172A; font-size: 16px; font-weight: 800; letter-spacing: 1px; background: transparent;")
+        brand_name.setStyleSheet("color: #000000; font-size: 16px; font-weight: 700; letter-spacing: 1px; background: transparent;")
         brand_tagline = QLabel("MARKET")
-        brand_tagline.setStyleSheet("color: #2563EB; font-size: 11px; font-weight: 600; letter-spacing: 2px; background: transparent;")
+        brand_tagline.setStyleSheet("color: #666666; font-size: 11px; font-weight: 600; letter-spacing: 2px; background: transparent;")
         brand_text.addWidget(brand_name)
         brand_text.addWidget(brand_tagline)
         brand_layout.addWidget(logo_circle)
@@ -848,49 +848,49 @@ class AdminDashboard(QWidget):
         # Navigation header
         nav_header = QLabel("MENU PRINCIPAL")
         nav_header.setStyleSheet("""
-            color: #94A3B8;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            padding: 20px 24px 12px 24px;
+            color: #888888;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            padding: 20px 20px 12px 20px;
             background: transparent;
         """)
         sidebar_layout.addWidget(nav_header)
 
-        # Menu items - Light mode
+        # Menu items - Vercel Style
         self.menu = QListWidget()
         self.menu.setStyleSheet("""
             QListWidget {
                 background: transparent;
                 border: none;
                 outline: none;
-                padding: 0 12px;
+                padding: 0 8px;
             }
             QListWidget::item {
-                color: #475569;
+                color: #666666;
                 background: transparent;
-                border-radius: 10px;
-                padding: 14px 16px;
+                border-radius: 8px;
+                padding: 12px 12px;
                 margin: 2px 0;
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: 500;
             }
             QListWidget::item:hover {
-                background: #F1F5F9;
-                color: #0F172A;
+                background: #F5F5F5;
+                color: #000000;
             }
             QListWidget::item:selected {
-                background: #EFF6FF;
-                color: #2563EB;
+                background: #F5F5F5;
+                color: #000000;
                 font-weight: 600;
             }
         """)
         self._populate_sidebar()
         sidebar_layout.addWidget(self.menu, 1)
 
-        # User footer - Light mode
+        # User footer - Vercel Style
         user_footer = QWidget()
-        user_footer.setStyleSheet("background: #F8FAFC; border-top: 1px solid #E2E8F0;")
+        user_footer.setStyleSheet("background: #FAFAFA; border-top: 1px solid #EAEAEA;")
         uf_layout = QHBoxLayout(user_footer)
         uf_layout.setContentsMargins(20, 16, 20, 20)
         uf_layout.setSpacing(12)
@@ -899,19 +899,19 @@ class AdminDashboard(QWidget):
         avatar.setFixedSize(40, 40)
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         avatar.setStyleSheet("""
-            background: #2563EB;
+            background: #000000;
             color: #FFFFFF;
             border-radius: 20px;
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 600;
         """)
 
         user_info = QVBoxLayout()
         user_info.setSpacing(2)
         user_name = QLabel(f"{user.prenom} {user.nom}")
-        user_name.setStyleSheet("color: #0F172A; font-size: 13px; font-weight: 600; background: transparent;")
+        user_name.setStyleSheet("color: #000000; font-size: 14px; font-weight: 600; background: transparent;")
         user_role = QLabel("Administrateur")
-        user_role.setStyleSheet("color: #64748B; font-size: 11px; background: transparent;")
+        user_role.setStyleSheet("color: #666666; font-size: 12px; background: transparent;")
         user_info.addWidget(user_name)
         user_info.addWidget(user_role)
 
@@ -2266,7 +2266,7 @@ class AdminDashboard(QWidget):
 
     # ══════════════════════════════════════════════════════════════════════════
     # EVENT HANDLERS
-    # ══════════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════════��
 
     def _on_menu_changed(self, row: int) -> None:
         if row < 0:
@@ -2944,32 +2944,6 @@ class AdminDashboard(QWidget):
             )
             session.commit()
         self.refresh_dashboard()
-
-    def _refresh_promotions_table(self) -> None:
-        with SessionLocal() as session:
-            promotions = PromotionRepository(session).list_all()
-            products = {p.id: p.name for p in ProductRepository(session).list_all()}
-
-        self.promotions_table.setRowCount(len(promotions))
-        for row, promo in enumerate(promotions):
-            product_name = products.get(promo.product_id, f"ID {promo.product_id}")
-            promo_type = "Pourcentage" if promo.type == PromotionType.PERCENTAGE else "Fixe"
-            value = promo.percentage_discount or promo.fixed_discount or 0
-            status = "Active" if promo.active else "Inactive"
-            for col, val in enumerate([promo.id, promo.name, product_name, promo_type, str(value), status]):
-                self.promotions_table.setItem(row, col, QTableWidgetItem(str(val)))
-
-    def _refresh_users_table(self) -> None:
-        with SessionLocal() as session:
-            users = UserRepository(session).list_all()
-
-        self.users_table.setRowCount(len(users))
-        for row, user in enumerate(users):
-            full_name = f"{user.prenom} {user.nom}"
-            role = user.role.value if hasattr(user.role, 'value') else str(user.role)
-            status = "Actif" if user.is_active else "Inactif"
-            for col, val in enumerate([user.id, user.username, full_name, role, user.employee_code or "-", status]):
-                self.users_table.setItem(row, col, QTableWidgetItem(str(val)))
 
     def _refresh_reports_data(self) -> None:
         with SessionLocal() as session:

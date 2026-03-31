@@ -751,7 +751,11 @@ class POSScreen(QWidget):
             self._scanner_buffer = ""
 
     def keyPressEvent(self, event) -> None:
-        # Handle barcode scanner input
+        # Do not intercept key events when scan_input has focus - let it handle them
+        if self.scan_input.hasFocus():
+            super().keyPressEvent(event)
+            return
+        # Handle barcode scanner input for hardware scanners (when input not focused)
         if event.text() and event.text().isprintable():
             self._scanner_buffer += event.text()
             self._scanner_timer.start(50)

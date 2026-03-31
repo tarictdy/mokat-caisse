@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════�����════════════════════════════════════════════
+        # ═════════════════════════�������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
@@ -2456,6 +2456,25 @@ class AdminDashboard(QWidget):
             ]
             for col, val in enumerate(values):
                 self.users_table.setItem(row, col, QTableWidgetItem(str(val)))
+
+    def _apply_report_month_filter(self, index: int) -> None:
+        """Applique le filtre de mois predefini sur les dates."""
+        from PyQt6.QtCore import QDate
+        today = QDate.currentDate()
+        
+        if index == 1:  # Mois en cours
+            start = QDate(today.year(), today.month(), 1)
+            end = today
+        elif index == 2:  # Mois precedent
+            first_of_month = QDate(today.year(), today.month(), 1)
+            end = first_of_month.addDays(-1)
+            start = QDate(end.year(), end.month(), 1)
+        else:  # Periode personnalisee - ne rien changer
+            return
+        
+        self.report_start_date.setDate(start)
+        self.report_end_date.setDate(end)
+        self._refresh_reports_data()
 
     def _refresh_reports_data(self) -> None:
         if not hasattr(self, "report_start_date"):

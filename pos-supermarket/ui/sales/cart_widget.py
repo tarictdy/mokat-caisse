@@ -29,6 +29,7 @@ class CartWidget(QWidget):
         layout.setSpacing(0)
 
         self.table = QTableWidget(0, 4)
+        self.table.setObjectName("CartTable")
         self.table.setHorizontalHeaderLabels(["Produit", "Prix unit.", "Qte", "Total"])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)

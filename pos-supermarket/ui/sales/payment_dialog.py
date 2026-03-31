@@ -251,6 +251,18 @@ class PaymentDialog(QDialog):
                 self.channel_select.setCurrentIndex(idx)
                 break
 
+    def set_channel(self, payment_channel: str) -> None:
+        """Alias pour set_preferred_channel - compatibilite avec pos_screen"""
+        self.set_preferred_channel(payment_channel)
+
+    def get_amount_received(self) -> Decimal:
+        """Retourne le montant recu par le client"""
+        return self.amount_given
+
+    def get_channel(self) -> str:
+        """Retourne le canal de paiement selectionne"""
+        return self.selected_channel
+
     def _payment_mode_changed(self) -> None:
         self.selected_channel = str(self.channel_select.currentData())
         self.selected_method = self.payment_service.resolve_payment_method(self.selected_channel)

@@ -60,6 +60,26 @@ class ReceiptService:
         ]
         return "\n".join(lines)
 
+    def generate_receipt(
+        self,
+        sale: Sale,
+        lines: list[CartLine],
+        cashier_name: str,
+        amount_received: Decimal,
+        change: Decimal,
+    ) -> str:
+        """Alias simplifie pour build_receipt_text - compatibilite avec pos_screen"""
+        from models.user import User
+        # Creer un objet User temporaire pour le nom du caissier
+        parts = cashier_name.split(" ", 1)
+        temp_user = User(
+            username=cashier_name,
+            password_hash="",
+            prenom=parts[0] if parts else cashier_name,
+            nom=parts[1] if len(parts) > 1 else "",
+        )
+        return self.build_receipt_text(sale, temp_user, amount_received, change, lines)
+
     def print_receipt(self, receipt_text: str) -> None:
         # Hook for python-escpos integration.
         _ = receipt_text

@@ -106,6 +106,10 @@ class CartWidget(QWidget):
         self.table.setVisible(not is_empty)
         self.empty_state.setVisible(is_empty)
 
+    def set_lines(self, lines: list[CartLine]) -> None:
+        """Alias pour load_lines - compatibilite avec pos_screen"""
+        self.load_lines(lines)
+
     def load_lines(self, lines: list[CartLine]) -> None:
         self._update_empty_state(len(lines) == 0)
         

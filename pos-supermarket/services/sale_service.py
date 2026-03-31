@@ -100,3 +100,38 @@ class SaleService:
                 self.product_repo.update_stock(product.id, new_stock)
 
         return self.sale_repo.add(sale)
+
+    def create_sale(
+        self,
+        lines: list[CartLine],
+        cashier_id: int,
+        discount_percent: Decimal = Decimal("0"),
+        amount_received: Decimal = Decimal("0"),
+        payment_channel: str = "cash",
+    ) -> Sale:
+        """Wrapper simplifie pour creer une vente depuis POSScreen."""
+        from repositories.user_repo import UserRepository
+        from core.database import SessionLocal
+        
+        with SessionLocal() as session:
+            user_repo = UserRepository(session)
+            user = user_repo.get_by_id(cashier_id)
+            if not user:
+                raise ValueError(f"Caissier introuvable: {cashier_id}")
+        
+        payment_method = PaymentMethod.CASH
+        if payment_channel in ("wave", "orange_money", "mtn_momo"):
+            payment_method = PaymentMethod.MOBILE
+        elif payment_channel == "card":
+            payment_method = PaymentMethod.CARD
+        
+        subtotal = self.compute_total(lines)
+        discount_amount = (subtotal * discount_percent / 100).quantize(Decimal("0.01")) if discount_percent > 0 else Decimal("0")
+        
+        return self.finalize_sale(
+            user=user,
+            payment_method=payment_method,
+            payment_channel=payment_channel,
+            lines=lines,
+            discount_amount=discount_amount,
+        )

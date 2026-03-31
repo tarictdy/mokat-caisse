@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════���������════════════════════════════════════════════
+        # ═════════════════════════�����������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
@@ -2584,6 +2584,99 @@ class AdminDashboard(QWidget):
                     if charge:
                         session.delete(charge)
                         session.commit()
+                self._refresh_reports_data()
+            except Exception as e:
+                QMessageBox.warning(self, "Erreur", str(e))
+
+    def _edit_selected_charge(self) -> None:
+        """Modifie la charge selectionnee."""
+        if not hasattr(self, "charges_table"):
+            return
+        row = self.charges_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Erreur", "Selectionnez une charge a modifier.")
+            return
+        
+        charge_id_item = self.charges_table.item(row, 0)
+        if not charge_id_item:
+            return
+        
+        try:
+            charge_id = int(charge_id_item.text())
+        except ValueError:
+            QMessageBox.warning(self, "Erreur", "ID de charge invalide.")
+            return
+        
+        # Recuperer la charge actuelle
+        with SessionLocal() as session:
+            charge = session.query(Charge).filter(Charge.id == charge_id).first()
+            if not charge:
+                QMessageBox.warning(self, "Erreur", "Charge introuvable.")
+                return
+            
+            current_name = charge.name
+            current_amount = float(charge.amount)
+        
+        # Dialogue d'edition
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Modifier la charge")
+        dialog.setFixedWidth(420)
+        dialog.setStyleSheet("QDialog { background: #F8FAFC; }")
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+        
+        title = QLabel("Modifier la charge")
+        title.setStyleSheet("font-size: 18px; font-weight: 700; color: #0F172A;")
+        layout.addWidget(title)
+        
+        form = QFormLayout()
+        form.setSpacing(12)
+        
+        name_input = QLineEdit(current_name)
+        name_input.setStyleSheet("QLineEdit { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; }")
+        
+        amount_input = QLineEdit(str(current_amount))
+        amount_input.setStyleSheet("QLineEdit { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; }")
+        
+        form.addRow("Nom:", name_input)
+        form.addRow("Montant (FCFA):", amount_input)
+        layout.addLayout(form)
+        
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.setStyleSheet("QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; }")
+        cancel_btn.clicked.connect(dialog.reject)
+        
+        save_btn = QPushButton("Enregistrer")
+        save_btn.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; }")
+        save_btn.clicked.connect(dialog.accept)
+        
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(save_btn)
+        layout.addLayout(btn_row)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            new_name = name_input.text().strip()
+            try:
+                new_amount = float(amount_input.text().strip().replace(" ", "").replace(",", "."))
+            except ValueError:
+                QMessageBox.warning(self, "Erreur", "Montant invalide")
+                return
+            if not new_name:
+                QMessageBox.warning(self, "Erreur", "Le nom est requis")
+                return
+            
+            try:
+                with SessionLocal() as session:
+                    charge = session.query(Charge).filter(Charge.id == charge_id).first()
+                    if charge:
+                        charge.name = new_name
+                        charge.amount = Decimal(str(new_amount))
+                        session.commit()
+                QMessageBox.information(self, "Succes", f"Charge '{new_name}' modifiee.")
                 self._refresh_reports_data()
             except Exception as e:
                 QMessageBox.warning(self, "Erreur", str(e))

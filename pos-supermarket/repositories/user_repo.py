@@ -10,13 +10,31 @@ class UserRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
 
+    def get_by_id(self, user_id: int) -> User | None:
+        return self.session.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
+
     def get_by_username(self, username: str) -> User | None:
         return self.session.execute(select(User).where(User.username == username)).scalar_one_or_none()
+
+    def list_all(self) -> list[User]:
+        return list(self.session.execute(select(User).order_by(User.username)).scalars().all())
 
     def add(self, user: User) -> User:
         self.session.add(user)
         self.session.flush()
         return user
+
+    def update(self, user: User) -> User:
+        self.session.flush()
+        return user
+
+    def delete(self, user_id: int) -> bool:
+        user = self.get_by_id(user_id)
+        if not user:
+            return False
+        self.session.delete(user)
+        self.session.flush()
+        return True
 
     def latest_created(self, limit: int = 10) -> list[User]:
         stmt = select(User).order_by(User.created_at.desc()).limit(limit)

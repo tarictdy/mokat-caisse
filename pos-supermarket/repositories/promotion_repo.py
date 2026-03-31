@@ -41,3 +41,26 @@ class PromotionRepository:
         self.session.add(promotion)
         self.session.flush()
         return promotion
+
+    def list_all(self) -> list[Promotion]:
+        stmt = select(Promotion).order_by(Promotion.created_at.desc())
+        return list(self.session.execute(stmt).scalars().all())
+
+    def get_by_id(self, promotion_id: int) -> Promotion | None:
+        return self.session.execute(select(Promotion).where(Promotion.id == promotion_id)).scalar_one_or_none()
+
+    def delete(self, promotion_id: int) -> bool:
+        promotion = self.get_by_id(promotion_id)
+        if not promotion:
+            return False
+        self.session.delete(promotion)
+        self.session.flush()
+        return True
+
+    def toggle_active(self, promotion_id: int) -> bool:
+        promotion = self.get_by_id(promotion_id)
+        if not promotion:
+            return False
+        promotion.active = not promotion.active
+        self.session.flush()
+        return True

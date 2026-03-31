@@ -713,8 +713,7 @@ class AdminDashboard(QWidget):
             ("Parametres", "Config"),
         ]
         for name, _ in items:
-            item = QListWidgetItem(f"   {name}")
-            item.setSizeHint(item.sizeHint().expandedTo(item.sizeHint()))
+            item = QListWidgetItem(name)
             self.menu.addItem(item)
 
     def _build_topbar(self) -> QWidget:
@@ -737,8 +736,10 @@ class AdminDashboard(QWidget):
         search_layout.setContentsMargins(16, 0, 16, 0)
         search_layout.setSpacing(10)
 
-        search_icon = QLabel("🔍")
-        search_icon.setStyleSheet("font-size: 14px; background: transparent;")
+        search_icon = QLabel("Q")
+        search_icon.setStyleSheet(
+            "font-size: 13px; font-weight: 700; color: #94A3B8; background: transparent;"
+        )
         self.topbar_search = QLineEdit()
         self.topbar_search.setPlaceholderText("Rechercher un produit, code-barres...")
         self.topbar_search.setStyleSheet("""
@@ -777,14 +778,16 @@ class AdminDashboard(QWidget):
         layout.addWidget(refresh_btn)
 
         # Notifications bell
-        notif_btn = QPushButton("🔔")
+        notif_btn = QPushButton("--")
         notif_btn.setFixedSize(40, 40)
         notif_btn.setStyleSheet("""
             QPushButton {
                 background: #F1F5F9;
                 border: none;
                 border-radius: 20px;
-                font-size: 16px;
+                font-size: 12px;
+                font-weight: 700;
+                color: #64748B;
             }
             QPushButton:hover { background: #E2E8F0; }
         """)
@@ -854,16 +857,16 @@ class AdminDashboard(QWidget):
         cards_layout.setSpacing(20)
 
         self.total_products_label = self._create_stat_card(
-            cards_layout, "Total produits", "0", "#3B82F6", "📦"
+            cards_layout, "Total produits", "0", "#3B82F6", "Produits"
         )
         self.low_stock_label = self._create_stat_card(
-            cards_layout, "Stock faible", "0", "#F59E0B", "⚠️"
+            cards_layout, "Stock faible", "0", "#F59E0B", "Alerte"
         )
         self.active_promotions_label = self._create_stat_card(
-            cards_layout, "Promotions actives", "0", "#10B981", "🏷️"
+            cards_layout, "Promotions actives", "0", "#10B981", "Promo"
         )
         self.sales_today_label = self._create_stat_card(
-            cards_layout, "Ventes du jour", "0 FCFA", "#8B5CF6", "💰"
+            cards_layout, "Ventes du jour", "0 FCFA", "#8B5CF6", "Ventes"
         )
         layout.addLayout(cards_layout)
 

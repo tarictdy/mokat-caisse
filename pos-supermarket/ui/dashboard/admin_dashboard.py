@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════�����������════════════════════════════════════════════
+        # ═════════════════════════�������������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
@@ -2540,11 +2540,12 @@ class AdminDashboard(QWidget):
             try:
                 with SessionLocal() as session:
                     charge = Charge(
-                        name=name,
+                        label=name,
                         amount=Decimal(str(amount)),
-                        category=ChargeCategory.OTHER,
-                        charge_type=ChargeType.FIXED,
-                        date=date.today()
+                        category=ChargeCategory.DIVERS,
+                        charge_type=ChargeType.FIXE,
+                        charge_date=date.today(),
+                        accounting_month=date.today().strftime("%Y-%m")
                     )
                     session.add(charge)
                     session.commit()
@@ -2614,7 +2615,7 @@ class AdminDashboard(QWidget):
                 QMessageBox.warning(self, "Erreur", "Charge introuvable.")
                 return
             
-            current_name = charge.name
+            current_name = charge.label
             current_amount = float(charge.amount)
         
         # Dialogue d'edition
@@ -2673,7 +2674,7 @@ class AdminDashboard(QWidget):
                 with SessionLocal() as session:
                     charge = session.query(Charge).filter(Charge.id == charge_id).first()
                     if charge:
-                        charge.name = new_name
+                        charge.label = new_name
                         charge.amount = Decimal(str(new_amount))
                         session.commit()
                 QMessageBox.information(self, "Succes", f"Charge '{new_name}' modifiee.")

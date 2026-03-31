@@ -405,7 +405,7 @@ class POSScreen(QWidget):
 
         # ─────────────────────────────────────────────────────
         # RIGHT - Total + Pay (360px)
-        # ─────────────────────────────────────────────────────
+        # ─────────────────────────��───────────────────────────
         right = QWidget()
         right.setFixedWidth(360)
         right.setStyleSheet("background: transparent;")
@@ -574,14 +574,13 @@ class POSScreen(QWidget):
                 product = repo.get_by_barcode(barcode)
                 
                 if product:
-                    # Creer une ligne de panier
+                    # Creer une ligne de panier (sans le champ 'product')
                     line = CartLine(
                         product_id=product.id,
                         barcode=product.barcode,
                         product_name=product.name,
                         quantity=1,
                         unit_price=Decimal(str(product.sale_price)),
-                        product=product,
                     )
                     self._merge_or_add_line(line)
                     self._refresh_cart()
@@ -592,7 +591,7 @@ class POSScreen(QWidget):
 
     def _merge_or_add_line(self, new_line: CartLine) -> None:
         for existing in self.cart_lines:
-            if existing.product.id == new_line.product.id:
+            if existing.product_id == new_line.product_id:
                 existing.quantity += new_line.quantity
                 return
         self.cart_lines.append(new_line)
@@ -603,7 +602,8 @@ class POSScreen(QWidget):
 
     def _update_totals(self) -> None:
         subtotal = sum((line.total_price for line in self.cart_lines), Decimal("0.00"))
-        tax = sum((line.product.tax_rate or Decimal("0")) * line.total_price / 100 for line in self.cart_lines)
+        # Calcul simplifie de la taxe (18% TVA par defaut)
+        tax = subtotal * Decimal("0.18")
         
         if self.discount_percent > 0:
             discount = (subtotal * self.discount_percent / 100).quantize(Decimal("0.01"))

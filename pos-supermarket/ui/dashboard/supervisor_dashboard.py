@@ -27,10 +27,10 @@ class SupervisorDashboard(QWidget):
         root.setSpacing(0)
 
         # ── Sidebar ───────────────────────────────────────────
-        sidebar_container = QWidget()
-        sidebar_container.setObjectName("LoginRoot")
-        sidebar_container.setFixedWidth(220)
-        sidebar_v = QVBoxLayout(sidebar_container)
+        self.sidebar_container = QWidget()
+        self.sidebar_container.setObjectName("LoginRoot")
+        self.sidebar_container.setFixedWidth(220)
+        sidebar_v = QVBoxLayout(self.sidebar_container)
         sidebar_v.setContentsMargins(0, 0, 0, 0)
         sidebar_v.setSpacing(0)
 
@@ -110,5 +110,9 @@ class SupervisorDashboard(QWidget):
         content_v.addWidget(info)
         content_v.addStretch()
 
-        root.addWidget(sidebar_container)
+        root.addWidget(self.sidebar_container)
         root.addWidget(content, 1)
+
+    def resizeEvent(self, event) -> None:  # type: ignore[override]
+        super().resizeEvent(event)
+        self.sidebar_container.setFixedWidth(160 if self.width() < 980 else 220)

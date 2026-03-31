@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════�������════════════════════════════════════════════
+        # ═════════════════════════���������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
@@ -2475,6 +2475,118 @@ class AdminDashboard(QWidget):
         self.report_start_date.setDate(start)
         self.report_end_date.setDate(end)
         self._refresh_reports_data()
+
+    def _create_charge(self) -> None:
+        """Ouvre un dialogue pour creer une nouvelle charge."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Nouvelle charge")
+        dialog.setFixedWidth(420)
+        dialog.setStyleSheet("QDialog { background: #F8FAFC; }")
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+        
+        title = QLabel("Ajouter une charge")
+        title.setStyleSheet("font-size: 18px; font-weight: 700; color: #0F172A;")
+        layout.addWidget(title)
+        
+        form = QFormLayout()
+        form.setSpacing(12)
+        
+        name_input = QLineEdit()
+        name_input.setPlaceholderText("Ex: Electricite, Loyer...")
+        name_input.setStyleSheet("QLineEdit { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; }")
+        
+        amount_input = QLineEdit()
+        amount_input.setPlaceholderText("Montant en FCFA")
+        amount_input.setStyleSheet("QLineEdit { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; }")
+        
+        category_input = QComboBox()
+        category_input.addItems(["Loyer", "Electricite", "Eau", "Salaires", "Fournitures", "Transport", "Autres"])
+        category_input.setStyleSheet("QComboBox { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; }")
+        
+        form.addRow("Nom:", name_input)
+        form.addRow("Montant (FCFA):", amount_input)
+        form.addRow("Categorie:", category_input)
+        layout.addLayout(form)
+        
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        
+        cancel_btn = QPushButton("Annuler")
+        cancel_btn.setStyleSheet("QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; }")
+        cancel_btn.clicked.connect(dialog.reject)
+        
+        save_btn = QPushButton("Enregistrer")
+        save_btn.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; }")
+        save_btn.clicked.connect(dialog.accept)
+        
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(save_btn)
+        layout.addLayout(btn_row)
+        
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            name = name_input.text().strip()
+            try:
+                amount = float(amount_input.text().strip().replace(" ", "").replace(",", "."))
+            except ValueError:
+                QMessageBox.warning(self, "Erreur", "Montant invalide")
+                return
+            if not name:
+                QMessageBox.warning(self, "Erreur", "Le nom est requis")
+                return
+            
+            # Sauvegarder en base
+            try:
+                with SessionLocal() as session:
+                    charge = Charge(
+                        name=name,
+                        amount=Decimal(str(amount)),
+                        category=ChargeCategory.OTHER,
+                        charge_type=ChargeType.FIXED,
+                        date=date.today()
+                    )
+                    session.add(charge)
+                    session.commit()
+                QMessageBox.information(self, "Succes", f"Charge '{name}' ajoutee.")
+                self._refresh_reports_data()
+            except Exception as e:
+                QMessageBox.warning(self, "Erreur", str(e))
+
+    def _delete_selected_charge(self) -> None:
+        """Supprime la charge selectionnee."""
+        if not hasattr(self, "charges_table"):
+            return
+        row = self.charges_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Erreur", "Selectionnez une charge a supprimer.")
+            return
+        
+        charge_id_item = self.charges_table.item(row, 0)
+        if not charge_id_item:
+            return
+        
+        try:
+            charge_id = int(charge_id_item.text())
+        except ValueError:
+            QMessageBox.warning(self, "Erreur", "ID de charge invalide.")
+            return
+        
+        name = self.charges_table.item(row, 1).text() if self.charges_table.item(row, 1) else "?"
+        reply = QMessageBox.question(
+            self, "Confirmer", f"Supprimer la charge '{name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                with SessionLocal() as session:
+                    charge = session.query(Charge).filter(Charge.id == charge_id).first()
+                    if charge:
+                        session.delete(charge)
+                        session.commit()
+                self._refresh_reports_data()
+            except Exception as e:
+                QMessageBox.warning(self, "Erreur", str(e))
 
     def _refresh_reports_data(self) -> None:
         if not hasattr(self, "report_start_date"):

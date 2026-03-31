@@ -76,72 +76,48 @@ class POSScreen(QWidget):
         self.pending_sale_counter = 1
         self.discount_percent = Decimal("0")
 
-        self.setWindowTitle("MOKAT MARKET - Caisse")
-        self.resize(1400, 900)
-        self.setStyleSheet("""
-            QWidget {
-                font-family: 'Inter', 'Segoe UI', sans-serif;
-                background: #FAFAFA;
-            }
-        """)
+        self.setWindowTitle("MOKAT - Caisse")
+        self.resize(1200, 800)
+        self.setStyleSheet("QWidget { font-family: 'Inter', 'Segoe UI', sans-serif; background: #0A0A0A; }")
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
         # ══════════════════════════════════════════════════════
-        # HEADER - Vercel Style
+        # HEADER - Vercel Dark Style
         # ══════════════════════════════════════════════════════
         header = QWidget()
-        header.setFixedHeight(64)
-        header.setStyleSheet("""
-            QWidget {
-                background: #FFFFFF;
-                border-bottom: 1px solid #EAEAEA;
-            }
-        """)
+        header.setFixedHeight(48)
+        header.setStyleSheet("QWidget { background: #0A0A0A; border-bottom: 1px solid #262626; }")
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(24, 0, 24, 0)
-        header_layout.setSpacing(16)
+        header_layout.setContentsMargins(16, 0, 16, 0)
+        header_layout.setSpacing(12)
 
         # Logo
         logo = QLabel("M")
-        logo.setFixedSize(36, 36)
+        logo.setFixedSize(28, 28)
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo.setStyleSheet("""
-            background: #000000;
-            color: #FFFFFF;
-            font-size: 16px;
-            font-weight: 700;
-            border-radius: 8px;
-        """)
+        logo.setStyleSheet("background: #FAFAFA; color: #0A0A0A; font-size: 12px; font-weight: 700; border-radius: 6px;")
         header_layout.addWidget(logo)
 
-        brand_name = QLabel("MOKAT MARKET")
-        brand_name.setStyleSheet("color: #000000; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;")
+        brand_name = QLabel("MOKAT")
+        brand_name.setStyleSheet("color: #FAFAFA; font-size: 14px; font-weight: 600;")
         header_layout.addWidget(brand_name)
 
-        sep = QLabel("|")
-        sep.setStyleSheet("color: #D4D4D4; font-size: 20px; font-weight: 300;")
+        sep = QLabel("/")
+        sep.setStyleSheet("color: #404040; font-size: 14px;")
         header_layout.addWidget(sep)
 
-        pos_label = QLabel("Point de Vente")
-        pos_label.setStyleSheet("color: #666666; font-size: 14px;")
+        pos_label = QLabel("Caisse")
+        pos_label.setStyleSheet("color: #71717A; font-size: 13px;")
         header_layout.addWidget(pos_label)
 
         header_layout.addStretch()
 
         # Session badge
-        session_badge = QLabel("SESSION ACTIVE")
-        session_badge.setStyleSheet("""
-            color: #0A8754;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            background: #D3F9E8;
-            border-radius: 4px;
-            padding: 6px 12px;
-        """)
+        session_badge = QLabel("ACTIF")
+        session_badge.setStyleSheet("color: #4ADE80; font-size: 10px; font-weight: 600; background: #14532D; border-radius: 3px; padding: 4px 8px;")
         header_layout.addWidget(session_badge)
 
         # Cashier
@@ -152,17 +128,11 @@ class POSScreen(QWidget):
             initials += cashier.nom[0].upper()
 
         cashier_avatar = QLabel(initials or "?")
-        cashier_avatar.setFixedSize(32, 32)
+        cashier_avatar.setFixedSize(28, 28)
         cashier_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cashier_avatar.setStyleSheet("""
-            background: #000000;
-            color: #FFFFFF;
-            border-radius: 16px;
-            font-size: 12px;
-            font-weight: 600;
-        """)
-        cashier_name = QLabel(f"{cashier.prenom} {cashier.nom}")
-        cashier_name.setStyleSheet("color: #000000; font-size: 14px; font-weight: 500;")
+        cashier_avatar.setStyleSheet("background: #262626; color: #FAFAFA; border-radius: 14px; font-size: 11px; font-weight: 600;")
+        cashier_name = QLabel(f"{cashier.prenom}"[:12])
+        cashier_name.setStyleSheet("color: #FAFAFA; font-size: 13px; font-weight: 500;")
         header_layout.addWidget(cashier_avatar)
         header_layout.addWidget(cashier_name)
 

@@ -565,12 +565,30 @@ class POSScreen(QWidget):
         self.scan_input.clear()
         if not barcode:
             return
-        line = self.sale_service.add_product_to_cart(barcode, 1)
-        if line:
-            self._merge_or_add_line(line)
-            self._refresh_cart()
-        else:
-            QMessageBox.warning(self, "Produit introuvable", f"Aucun produit avec le code: {barcode}")
+        
+        try:
+            # Rechercher le produit par code-barres
+            from repositories.product_repo import ProductRepository
+            with SessionLocal() as session:
+                repo = ProductRepository(session)
+                product = repo.get_by_barcode(barcode)
+                
+                if product:
+                    # Creer une ligne de panier
+                    line = CartLine(
+                        product_id=product.id,
+                        barcode=product.barcode,
+                        product_name=product.name,
+                        quantity=1,
+                        unit_price=Decimal(str(product.sale_price)),
+                        product=product,
+                    )
+                    self._merge_or_add_line(line)
+                    self._refresh_cart()
+                else:
+                    QMessageBox.warning(self, "Produit introuvable", f"Aucun produit avec le code: {barcode}")
+        except Exception as e:
+            QMessageBox.warning(self, "Erreur", f"Erreur lors de la recherche: {str(e)}")
 
     def _merge_or_add_line(self, new_line: CartLine) -> None:
         for existing in self.cart_lines:

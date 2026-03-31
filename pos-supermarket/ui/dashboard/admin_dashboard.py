@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════���════════════════════════════════════════════
+        # ═════════════════════════�����════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
@@ -2000,161 +2000,6 @@ class AdminDashboard(QWidget):
         page_layout.addWidget(scroll)
         return page
 
-    def _build_reports_page(self) -> QWidget:
-        page = QWidget()
-        page.setStyleSheet("background: #F1F5F9;")
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: #F1F5F9; border: none; }")
-
-        content = QWidget()
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(24)
-
-        title = QLabel("Rapports et analyses")
-        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
-        layout.addWidget(title)
-
-        # Stats cards row
-        stats_row = QHBoxLayout()
-        stats_row.setSpacing(20)
-
-        for label, value, color, icon in [
-            ("Ventes aujourd'hui", "0 FCFA", "#10B981", "V"),
-            ("Ventes ce mois", "0 FCFA", "#3B82F6", "M"),
-            ("Benefice estime", "0 FCFA", "#8B5CF6", "B"),
-            ("Transactions", "0", "#F59E0B", "T"),
-        ]:
-            card = QFrame()
-            card.setStyleSheet(f"""
-                QFrame {{
-                    background: #FFFFFF;
-                    border: 1px solid #E2E8F0;
-                    border-radius: 16px;
-                    border-left: 4px solid {color};
-                }}
-            """)
-            card_layout = QVBoxLayout(card)
-            card_layout.setContentsMargins(20, 20, 20, 20)
-
-            icon_lbl = QLabel(icon)
-            icon_lbl.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {color}; background: transparent;")
-            card_layout.addWidget(icon_lbl)
-
-            lbl = QLabel(label)
-            lbl.setStyleSheet("color: #64748B; font-size: 12px; font-weight: 600;")
-            card_layout.addWidget(lbl)
-
-            val = QLabel(value)
-            val.setStyleSheet(f"color: {color}; font-size: 24px; font-weight: 800;")
-            card_layout.addWidget(val)
-
-            stats_row.addWidget(card)
-
-        layout.addLayout(stats_row)
-
-        # Charts section
-        charts_row = QHBoxLayout()
-        charts_row.setSpacing(20)
-
-        # Sales chart card
-        sales_chart = QFrame()
-        sales_chart.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
-        sales_chart_layout = QVBoxLayout(sales_chart)
-        sales_chart_layout.setContentsMargins(24, 24, 24, 24)
-
-        sales_title = QLabel("Evolution des ventes (7 derniers jours)")
-        sales_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
-        sales_chart_layout.addWidget(sales_title)
-
-        # Simple bar chart representation using QFrames
-        chart_area = QWidget()
-        chart_area.setMinimumHeight(200)
-        chart_layout = QHBoxLayout(chart_area)
-        chart_layout.setSpacing(12)
-        chart_layout.setAlignment(Qt.AlignmentFlag.AlignBottom)
-
-        for day, height in [("Lun", 60), ("Mar", 90), ("Mer", 75), ("Jeu", 120), ("Ven", 150), ("Sam", 180), ("Dim", 100)]:
-            bar_col = QVBoxLayout()
-            bar_col.setSpacing(8)
-            
-            bar = QFrame()
-            bar.setFixedSize(40, height)
-            bar.setStyleSheet("background: #3B82F6; border-radius: 6px;")
-            bar_col.addWidget(bar, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
-
-            day_lbl = QLabel(day)
-            day_lbl.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 600;")
-            day_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            bar_col.addWidget(day_lbl)
-
-            chart_layout.addLayout(bar_col)
-
-        sales_chart_layout.addWidget(chart_area)
-        charts_row.addWidget(sales_chart, 1)
-
-        # Revenue breakdown
-        revenue_card = QFrame()
-        revenue_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
-        revenue_layout = QVBoxLayout(revenue_card)
-        revenue_layout.setContentsMargins(24, 24, 24, 24)
-
-        rev_title = QLabel("Repartition des revenus")
-        rev_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
-        revenue_layout.addWidget(rev_title)
-
-        for cat, pct, color in [
-            ("Alimentation", "45%", "#10B981"),
-            ("Boissons", "25%", "#3B82F6"),
-            ("Hygiene", "15%", "#8B5CF6"),
-            ("Autres", "15%", "#F59E0B"),
-        ]:
-            row = QHBoxLayout()
-            dot = QLabel()
-            dot.setFixedSize(12, 12)
-            dot.setStyleSheet(f"background: {color}; border-radius: 6px;")
-            row.addWidget(dot)
-            cat_lbl = QLabel(cat)
-            cat_lbl.setStyleSheet("color: #334155; font-size: 13px; font-weight: 500;")
-            row.addWidget(cat_lbl)
-            row.addStretch()
-            pct_lbl = QLabel(pct)
-            pct_lbl.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: 700;")
-            row.addWidget(pct_lbl)
-            revenue_layout.addLayout(row)
-
-        revenue_layout.addStretch()
-        charts_row.addWidget(revenue_card)
-
-        layout.addLayout(charts_row)
-
-        # Recent transactions table
-        trans_card = QFrame()
-        trans_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
-        trans_layout = QVBoxLayout(trans_card)
-        trans_layout.setContentsMargins(24, 24, 24, 24)
-
-        trans_title = QLabel("Transactions recentes")
-        trans_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
-        trans_layout.addWidget(trans_title)
-
-        self.transactions_table = QTableWidget(0, 5)
-        self.transactions_table.setHorizontalHeaderLabels(["Date", "Heure", "Montant", "Mode paiement", "Caissier"])
-        self._style_table(self.transactions_table)
-        self.transactions_table.setMaximumHeight(250)
-        trans_layout.addWidget(self.transactions_table)
-
-        layout.addWidget(trans_card)
-
-        scroll.setWidget(content)
-        page_layout = QVBoxLayout(page)
-        page_layout.setContentsMargins(0, 0, 0, 0)
-        page_layout.addWidget(scroll)
-        return page
-
     def _build_settings_page(self) -> QWidget:
         page = QWidget()
         page.setStyleSheet("background: #F1F5F9;")
@@ -2247,6 +2092,129 @@ class AdminDashboard(QWidget):
 
         layout.addWidget(printer_card)
 
+        # Firebase Backup card
+        backup_card = QFrame()
+        backup_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        backup_layout = QVBoxLayout(backup_card)
+        backup_layout.setContentsMargins(24, 24, 24, 24)
+        backup_layout.setSpacing(16)
+
+        backup_title = QLabel("Sauvegarde Firebase")
+        backup_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        backup_layout.addWidget(backup_title)
+
+        backup_desc = QLabel("Sauvegardez automatiquement votre base de donnees sur Firebase Storage.")
+        backup_desc.setStyleSheet("color: #64748B; font-size: 13px;")
+        backup_desc.setWordWrap(True)
+        backup_layout.addWidget(backup_desc)
+
+        # Status row
+        self.backup_status_lbl = QLabel("Statut: Non configure")
+        self.backup_status_lbl.setStyleSheet("color: #F59E0B; font-size: 13px; font-weight: 500;")
+        backup_layout.addWidget(self.backup_status_lbl)
+
+        backup_btns = QHBoxLayout()
+        backup_btns.setSpacing(12)
+
+        check_backup_btn = QPushButton("Verifier la configuration")
+        check_backup_btn.setStyleSheet("""
+            QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 8px; 
+                padding: 10px 16px; font-weight: 600; }
+            QPushButton:hover { background: #E2E8F0; }
+        """)
+        check_backup_btn.clicked.connect(self._check_firebase_config)
+        backup_btns.addWidget(check_backup_btn)
+
+        run_backup_btn = QPushButton("Lancer une sauvegarde")
+        run_backup_btn.setStyleSheet("""
+            QPushButton { background: #10B981; color: #FFFFFF; border: none; border-radius: 8px; 
+                padding: 10px 16px; font-weight: 600; }
+            QPushButton:hover { background: #059669; }
+        """)
+        run_backup_btn.clicked.connect(self._run_firebase_backup)
+        backup_btns.addWidget(run_backup_btn)
+        backup_btns.addStretch()
+
+        backup_layout.addLayout(backup_btns)
+        layout.addWidget(backup_card)
+
+        # Maintenance Access card
+        maint_card = QFrame()
+        maint_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        maint_layout = QVBoxLayout(maint_card)
+        maint_layout.setContentsMargins(24, 24, 24, 24)
+        maint_layout.setSpacing(16)
+
+        maint_title = QLabel("Acces Maintenance")
+        maint_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        maint_layout.addWidget(maint_title)
+
+        maint_desc = QLabel("Gerez les comptes d'acces pour la maintenance technique du systeme.")
+        maint_desc.setStyleSheet("color: #64748B; font-size: 13px;")
+        maint_desc.setWordWrap(True)
+        maint_layout.addWidget(maint_desc)
+
+        maint_btns = QHBoxLayout()
+        maint_btns.setSpacing(12)
+
+        create_maint_btn = QPushButton("Creer un acces maintenance")
+        create_maint_btn.setStyleSheet("""
+            QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 8px; 
+                padding: 10px 16px; font-weight: 600; }
+            QPushButton:hover { background: #E2E8F0; }
+        """)
+        create_maint_btn.clicked.connect(self._create_maintenance_access)
+        maint_btns.addWidget(create_maint_btn)
+
+        view_audit_btn = QPushButton("Voir les audits")
+        view_audit_btn.setStyleSheet("""
+            QPushButton { background: #8B5CF6; color: #FFFFFF; border: none; border-radius: 8px; 
+                padding: 10px 16px; font-weight: 600; }
+            QPushButton:hover { background: #7C3AED; }
+        """)
+        view_audit_btn.clicked.connect(self._view_maintenance_audits)
+        maint_btns.addWidget(view_audit_btn)
+        maint_btns.addStretch()
+
+        maint_layout.addLayout(maint_btns)
+        layout.addWidget(maint_card)
+
+        # Database card
+        db_card = QFrame()
+        db_card.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        db_layout = QVBoxLayout(db_card)
+        db_layout.setContentsMargins(24, 24, 24, 24)
+        db_layout.setSpacing(16)
+
+        db_title = QLabel("Base de donnees")
+        db_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        db_layout.addWidget(db_title)
+
+        db_btns = QHBoxLayout()
+        db_btns.setSpacing(12)
+
+        local_backup_btn = QPushButton("Backup local")
+        local_backup_btn.setStyleSheet("""
+            QPushButton { background: #F1F5F9; color: #475569; border: none; border-radius: 8px; 
+                padding: 10px 16px; font-weight: 600; }
+            QPushButton:hover { background: #E2E8F0; }
+        """)
+        local_backup_btn.clicked.connect(self._run_local_backup)
+        db_btns.addWidget(local_backup_btn)
+
+        reset_db_btn = QPushButton("Reinitialiser la base")
+        reset_db_btn.setStyleSheet("""
+            QPushButton { background: #EF4444; color: #FFFFFF; border: none; border-radius: 8px; 
+                padding: 10px 16px; font-weight: 600; }
+            QPushButton:hover { background: #DC2626; }
+        """)
+        reset_db_btn.clicked.connect(self._confirm_reset_db)
+        db_btns.addWidget(reset_db_btn)
+        db_btns.addStretch()
+
+        db_layout.addLayout(db_btns)
+        layout.addWidget(db_card)
+
         # Save button
         save_btn = QPushButton("Enregistrer les parametres")
         save_btn.setStyleSheet("""
@@ -2264,9 +2232,85 @@ class AdminDashboard(QWidget):
         page_layout.addWidget(scroll)
         return page
 
+    def _check_firebase_config(self) -> None:
+        from services.firebase_backup_service import FirebaseBackupService
+        service = FirebaseBackupService()
+        status = service.config_status()
+        msg = f"SDK disponible: {status['sdk_available']}\nCredentials: {status['credentials_path']}\nBucket: {status['bucket']}"
+        if status['sdk_available'] == 'oui' and status['bucket'] != 'non configure':
+            self.backup_status_lbl.setText("Statut: Configure")
+            self.backup_status_lbl.setStyleSheet("color: #10B981; font-size: 13px; font-weight: 500;")
+        else:
+            self.backup_status_lbl.setText("Statut: Non configure")
+            self.backup_status_lbl.setStyleSheet("color: #F59E0B; font-size: 13px; font-weight: 500;")
+        QMessageBox.information(self, "Configuration Firebase", msg)
+
+    def _run_firebase_backup(self) -> None:
+        from services.firebase_backup_service import FirebaseBackupService
+        service = FirebaseBackupService()
+        result = service.upload_backup()
+        if result.success:
+            QMessageBox.information(self, "Backup Firebase", f"Sauvegarde reussie!\n\nBucket: {result.bucket}\nChemin: {result.object_path}\nTaille: {result.file_size} octets")
+        else:
+            QMessageBox.warning(self, "Backup Firebase", f"Echec de la sauvegarde:\n{result.message}")
+
+    def _create_maintenance_access(self) -> None:
+        from PyQt6.QtWidgets import QInputDialog
+        username, ok = QInputDialog.getText(self, "Nouvel acces maintenance", "Nom d'utilisateur:")
+        if not ok or not username:
+            return
+        password, ok = QInputDialog.getText(self, "Nouvel acces maintenance", "Mot de passe:")
+        if not ok or not password:
+            return
+        try:
+            from services.maintenance_service import MaintenanceService
+            from repositories.maintenance_repo import MaintenanceRepository
+            from models.maintenance import MaintenanceRole
+            with SessionLocal() as session:
+                repo = MaintenanceRepository(session)
+                service = MaintenanceService(repo)
+                service.create_access(username, password, MaintenanceRole.TECHNICIAN)
+                session.commit()
+            QMessageBox.information(self, "Acces maintenance", f"Compte '{username}' cree avec succes.")
+        except Exception as e:
+            QMessageBox.warning(self, "Erreur", str(e))
+
+    def _view_maintenance_audits(self) -> None:
+        try:
+            from repositories.maintenance_repo import MaintenanceRepository
+            with SessionLocal() as session:
+                repo = MaintenanceRepository(session)
+                audits = repo.list_audits(limit=50)
+                if not audits:
+                    QMessageBox.information(self, "Audits", "Aucun audit enregistre.")
+                    return
+                text = "\n".join([f"[{a.created_at}] {a.level}: {a.event_type} - {a.message}" for a in audits[:20]])
+                QMessageBox.information(self, "Derniers audits", text)
+        except Exception as e:
+            QMessageBox.warning(self, "Erreur", str(e))
+
+    def _run_local_backup(self) -> None:
+        from core.backup import backup_database
+        from core.app_config import BACKUP_PATH
+        try:
+            backup_database()
+            QMessageBox.information(self, "Backup local", f"Sauvegarde creee avec succes:\n{BACKUP_PATH}")
+        except Exception as e:
+            QMessageBox.warning(self, "Erreur", str(e))
+
+    def _confirm_reset_db(self) -> None:
+        reply = QMessageBox.warning(
+            self, "Reinitialisation",
+            "ATTENTION: Cette action va supprimer TOUTES les donnees!\n\nEtes-vous sur de vouloir continuer?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            QMessageBox.information(self, "Reinitialisation", "Fonctionnalite desactivee pour securite.")
+
     # ══════════════════════════════════════════════════════════════════════════
     # EVENT HANDLERS
-    # ═════════════════════════════════════════════════════════════════════════��
+    # ═══════════════════════════════════════════════════════════════════════��═��
 
     def _on_menu_changed(self, row: int) -> None:
         if row < 0:
@@ -2321,7 +2365,7 @@ class AdminDashboard(QWidget):
 
         notifications: list[str] = []
         if low_stock > 0:
-            notifications.append(f"⚠️ {low_stock} produit(s) sous le stock minimum.")
+            notifications.append(f"⚠��� {low_stock} produit(s) sous le stock minimum.")
         expired = [p for p in products if p.expiration_date and p.expiration_date <= date.today()]
         near_exp = [p for p in products if p.expiration_date and 0 <= (p.expiration_date - date.today()).days <= 7]
         if expired:
@@ -2944,19 +2988,6 @@ class AdminDashboard(QWidget):
             )
             session.commit()
         self.refresh_dashboard()
-
-    def _refresh_reports_data(self) -> None:
-        with SessionLocal() as session:
-            sales = SaleRepository(session).list_recent(limit=20)
-            users = {u.id: f"{u.prenom} {u.nom}" for u in UserRepository(session).list_all()}
-
-        self.transactions_table.setRowCount(len(sales))
-        for row, sale in enumerate(sales):
-            date_str = sale.created_at.strftime("%Y-%m-%d") if sale.created_at else "-"
-            time_str = sale.created_at.strftime("%H:%M") if sale.created_at else "-"
-            cashier = users.get(sale.cashier_id, f"ID {sale.cashier_id}")
-            for col, val in enumerate([date_str, time_str, f"{sale.total_amount:,.0f} FCFA", sale.payment_channel or "-", cashier]):
-                self.transactions_table.setItem(row, col, QTableWidgetItem(str(val)))
 
     def refresh_dashboard(self) -> None:
         stats = self._load_stats()

@@ -800,17 +800,14 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════�������������════════════════════════════════════════════
+        # ═════════════════════════���������������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
+        # SIDEBAR - Navigation gauche - Mode SOMBRE Vercel
+        # ══════════════════════════════════════════════════════════════════════
         self.sidebar = QWidget()
-        self.sidebar.setFixedWidth(240)
-        self.sidebar.setStyleSheet("""
-            QWidget {
-                background: #FFFFFF;
-                border-right: 1px solid #EAEAEA;
-            }
-        """)
+        self.sidebar.setFixedWidth(200)
+        self.sidebar.setStyleSheet("QWidget { background: #0A0A0A; border-right: 1px solid #262626; }")
         sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
@@ -819,117 +816,66 @@ class AdminDashboard(QWidget):
         brand = QWidget()
         brand.setStyleSheet("background: transparent;")
         brand_layout = QHBoxLayout(brand)
-        brand_layout.setContentsMargins(24, 28, 24, 28)
-        brand_layout.setSpacing(12)
+        brand_layout.setContentsMargins(16, 16, 16, 16)
+        brand_layout.setSpacing(10)
 
         logo_circle = QLabel("M")
-        logo_circle.setFixedSize(42, 42)
+        logo_circle.setFixedSize(32, 32)
         logo_circle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        logo_circle.setStyleSheet("""
-            background: #000000;
-            color: #FFFFFF;
-            font-size: 18px;
-            font-weight: 800;
-            border-radius: 10px;
-        """)
-        brand_text = QVBoxLayout()
-        brand_text.setSpacing(2)
+        logo_circle.setStyleSheet("background: #FAFAFA; color: #0A0A0A; font-size: 14px; font-weight: 700; border-radius: 6px;")
         brand_name = QLabel("MOKAT")
-        brand_name.setStyleSheet("color: #000000; font-size: 16px; font-weight: 700; letter-spacing: 1px; background: transparent;")
-        brand_tagline = QLabel("MARKET")
-        brand_tagline.setStyleSheet("color: #666666; font-size: 11px; font-weight: 600; letter-spacing: 2px; background: transparent;")
-        brand_text.addWidget(brand_name)
-        brand_text.addWidget(brand_tagline)
+        brand_name.setStyleSheet("color: #FAFAFA; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; background: transparent;")
         brand_layout.addWidget(logo_circle)
-        brand_layout.addLayout(brand_text)
+        brand_layout.addWidget(brand_name)
         brand_layout.addStretch()
         sidebar_layout.addWidget(brand)
 
-        # Navigation header
-        nav_header = QLabel("MENU PRINCIPAL")
-        nav_header.setStyleSheet("""
-            color: #888888;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            padding: 20px 20px 12px 20px;
-            background: transparent;
-        """)
-        sidebar_layout.addWidget(nav_header)
+        # Divider
+        div = QFrame()
+        div.setFixedHeight(1)
+        div.setStyleSheet("background: #262626;")
+        sidebar_layout.addWidget(div)
 
-        # Menu items - Vercel Style
+        # Menu items - Vercel Dark Style
         self.menu = QListWidget()
         self.menu.setStyleSheet("""
-            QListWidget {
-                background: transparent;
-                border: none;
-                outline: none;
-                padding: 0 8px;
-            }
+            QListWidget { background: transparent; border: none; outline: none; padding: 8px; }
             QListWidget::item {
-                color: #666666;
-                background: transparent;
-                border-radius: 8px;
-                padding: 12px 12px;
-                margin: 2px 0;
-                font-size: 14px;
-                font-weight: 500;
+                color: #A1A1AA; background: transparent; border-radius: 6px;
+                padding: 10px 12px; margin: 1px 0; font-size: 13px; font-weight: 500;
             }
-            QListWidget::item:hover {
-                background: #F5F5F5;
-                color: #000000;
-            }
-            QListWidget::item:selected {
-                background: #F5F5F5;
-                color: #000000;
-                font-weight: 600;
-            }
+            QListWidget::item:hover { background: #262626; color: #FAFAFA; }
+            QListWidget::item:selected { background: #262626; color: #FAFAFA; }
         """)
         self._populate_sidebar()
         sidebar_layout.addWidget(self.menu, 1)
 
-        # User footer - Vercel Style
+        # User footer - Vercel Dark
         user_footer = QWidget()
-        user_footer.setStyleSheet("background: #FAFAFA; border-top: 1px solid #EAEAEA;")
+        user_footer.setStyleSheet("background: #0A0A0A; border-top: 1px solid #262626;")
         uf_layout = QHBoxLayout(user_footer)
-        uf_layout.setContentsMargins(20, 16, 20, 20)
-        uf_layout.setSpacing(12)
+        uf_layout.setContentsMargins(12, 12, 12, 12)
+        uf_layout.setSpacing(10)
 
         avatar = QLabel(user.prenom[0].upper() if user.prenom else "A")
-        avatar.setFixedSize(40, 40)
+        avatar.setFixedSize(32, 32)
         avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        avatar.setStyleSheet("""
-            background: #000000;
-            color: #FFFFFF;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-        """)
+        avatar.setStyleSheet("background: #262626; color: #FAFAFA; border-radius: 16px; font-size: 12px; font-weight: 600;")
 
         user_info = QVBoxLayout()
-        user_info.setSpacing(2)
-        user_name = QLabel(f"{user.prenom} {user.nom}")
-        user_name.setStyleSheet("color: #000000; font-size: 14px; font-weight: 600; background: transparent;")
-        user_role = QLabel("Administrateur")
-        user_role.setStyleSheet("color: #666666; font-size: 12px; background: transparent;")
+        user_info.setSpacing(0)
+        user_name = QLabel(f"{user.prenom} {user.nom}"[:16])
+        user_name.setStyleSheet("color: #FAFAFA; font-size: 12px; font-weight: 500; background: transparent;")
+        user_role = QLabel("Admin")
+        user_role.setStyleSheet("color: #71717A; font-size: 11px; background: transparent;")
         user_info.addWidget(user_name)
         user_info.addWidget(user_role)
 
-        logout_btn = QPushButton("Deconnexion")
+        logout_btn = QPushButton("Quitter")
+        logout_btn.setFixedSize(60, 28)
         logout_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                color: #EF4444;
-                border: 1px solid #EF4444;
-                border-radius: 6px;
-                padding: 6px 12px;
-                font-size: 11px;
-                font-weight: 600;
-            }
-            QPushButton:hover {
-                background: #EF4444;
-                color: #FFFFFF;
-            }
+            QPushButton { background: transparent; color: #EF4444; border: 1px solid #EF4444; border-radius: 4px; font-size: 11px; font-weight: 500; }
+            QPushButton:hover { background: #EF4444; color: #FFFFFF; }
         """)
         logout_btn.clicked.connect(self.close)
 
@@ -941,10 +887,10 @@ class AdminDashboard(QWidget):
         root.addWidget(self.sidebar)
 
         # ══════════════════════════════════════════════════════════════════════
-        # MAIN CONTENT
+        # MAIN CONTENT - Dark theme
         # ══════════════════════════════════════════════════════════════════════
         content = QWidget()
-        content.setStyleSheet("background: #F1F5F9;")
+        content.setStyleSheet("background: #0A0A0A;")
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
@@ -981,12 +927,12 @@ class AdminDashboard(QWidget):
     def resizeEvent(self, event) -> None:  # type: ignore[override]
         super().resizeEvent(event)
         width = self.width()
-        if width < 1100:
+        if width < 1000:
+            self.sidebar.setFixedWidth(160)
+        elif width < 1200:
             self.sidebar.setFixedWidth(180)
-        elif width < 1360:
-            self.sidebar.setFixedWidth(210)
         else:
-            self.sidebar.setFixedWidth(240)
+            self.sidebar.setFixedWidth(200)
 
     def _populate_sidebar(self) -> None:
         items = [
@@ -1005,40 +951,25 @@ class AdminDashboard(QWidget):
 
     def _build_topbar(self) -> QWidget:
         bar = QWidget()
-        bar.setFixedHeight(72)
-        bar.setStyleSheet("""
-            QWidget {
-                background: #FFFFFF;
-                border-bottom: 1px solid #E2E8F0;
-            }
-        """)
+        bar.setFixedHeight(48)
+        bar.setStyleSheet("QWidget { background: #0A0A0A; border-bottom: 1px solid #262626; }")
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(32, 0, 32, 0)
-        layout.setSpacing(16)
+        layout.setContentsMargins(20, 0, 20, 0)
+        layout.setSpacing(12)
 
         # Search
         search_container = QWidget()
-        search_container.setStyleSheet("background: #F8FAFC; border-radius: 12px;")
+        search_container.setStyleSheet("background: #171717; border: 1px solid #262626; border-radius: 6px;")
         search_layout = QHBoxLayout(search_container)
-        search_layout.setContentsMargins(16, 0, 16, 0)
-        search_layout.setSpacing(10)
+        search_layout.setContentsMargins(12, 0, 12, 0)
+        search_layout.setSpacing(8)
 
         search_icon = QLabel("Q")
-        search_icon.setStyleSheet(
-            "font-size: 13px; font-weight: 700; color: #94A3B8; background: transparent;"
-        )
+        search_icon.setStyleSheet("font-size: 11px; font-weight: 600; color: #525252; background: transparent;")
         self.topbar_search = QLineEdit()
-        self.topbar_search.setPlaceholderText("Rechercher un produit, code-barres...")
-        self.topbar_search.setStyleSheet("""
-            QLineEdit {
-                background: transparent;
-                border: none;
-                font-size: 13px;
-                color: #374151;
-                padding: 12px 0;
-            }
-        """)
-        self.topbar_search.setFixedWidth(280)
+        self.topbar_search.setPlaceholderText("Rechercher...")
+        self.topbar_search.setStyleSheet("QLineEdit { background: transparent; border: none; font-size: 13px; color: #FAFAFA; padding: 8px 0; }")
+        self.topbar_search.setFixedWidth(200)
         self.topbar_search.returnPressed.connect(self._search_products)
         self.topbar_search.textChanged.connect(self._search_products)
 
@@ -1097,43 +1028,36 @@ class AdminDashboard(QWidget):
 
     def _build_dashboard_page(self) -> QWidget:
         page = QWidget()
-        page.setStyleSheet("background: #F1F5F9;")
+        page.setStyleSheet("background: #0A0A0A;")
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: #F1F5F9; border: none; }")
+        scroll.setStyleSheet("QScrollArea { background: #0A0A0A; border: none; }")
 
         content = QWidget()
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(24)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
 
         # Page header
         header = QHBoxLayout()
         header_text = QVBoxLayout()
+        header_text.setSpacing(2)
         title = QLabel("Tableau de bord")
-        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
-        subtitle = QLabel(f"Bienvenue, {self.user.prenom}. Voici un apercu de votre activite.")
-        subtitle.setStyleSheet("font-size: 14px; color: #64748B;")
+        title.setStyleSheet("font-size: 20px; font-weight: 600; color: #FAFAFA;")
+        subtitle = QLabel(f"Bienvenue, {self.user.prenom}")
+        subtitle.setStyleSheet("font-size: 13px; color: #71717A;")
         header_text.addWidget(title)
         header_text.addWidget(subtitle)
         header.addLayout(header_text)
         header.addStretch()
 
         # Quick action buttons
-        quick_add = QPushButton("+ Nouveau produit")
+        quick_add = QPushButton("Nouveau produit")
         quick_add.setStyleSheet("""
-            QPushButton {
-                background: #2563EB;
-                color: #FFFFFF;
-                border: none;
-                border-radius: 10px;
-                padding: 12px 24px;
-                font-size: 14px;
-                font-weight: 600;
-            }
-            QPushButton:hover { background: #1D4ED8; }
+            QPushButton { background: #FAFAFA; color: #0A0A0A; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 500; }
+            QPushButton:hover { background: #E5E5E5; }
         """)
         quick_add.clicked.connect(self._create_product)
         header.addWidget(quick_add)
@@ -1141,80 +1065,45 @@ class AdminDashboard(QWidget):
 
         # Stat cards
         cards_layout = QHBoxLayout()
-        cards_layout.setSpacing(20)
+        cards_layout.setSpacing(12)
 
-        self.total_products_label = self._create_stat_card(
-            cards_layout, "Total produits", "0", "#3B82F6", "Produits"
-        )
-        self.low_stock_label = self._create_stat_card(
-            cards_layout, "Stock faible", "0", "#F59E0B", "Alerte"
-        )
-        self.active_promotions_label = self._create_stat_card(
-            cards_layout, "Promotions actives", "0", "#10B981", "Promo"
-        )
-        self.sales_today_label = self._create_stat_card(
-            cards_layout, "Ventes du jour", "0 FCFA", "#8B5CF6", "Ventes"
-        )
+        self.total_products_label = self._create_stat_card(cards_layout, "Produits", "0", "#0070F3", "P")
+        self.low_stock_label = self._create_stat_card(cards_layout, "Stock faible", "0", "#F59E0B", "S")
+        self.active_promotions_label = self._create_stat_card(cards_layout, "Promotions", "0", "#22C55E", "R")
+        self.sales_today_label = self._create_stat_card(cards_layout, "Ventes jour", "0 F", "#A855F7", "V")
         layout.addLayout(cards_layout)
 
         # Actions row
         actions_card = QFrame()
-        actions_card.setStyleSheet("""
-            QFrame {
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 16px;
-            }
-        """)
+        actions_card.setStyleSheet("QFrame { background: #171717; border: 1px solid #262626; border-radius: 8px; }")
         actions_layout = QVBoxLayout(actions_card)
-        actions_layout.setContentsMargins(24, 20, 24, 20)
-        actions_layout.setSpacing(16)
+        actions_layout.setContentsMargins(16, 14, 16, 14)
+        actions_layout.setSpacing(12)
 
         actions_title = QLabel("Actions rapides")
-        actions_title.setStyleSheet("font-size: 16px; font-weight: 700; color: #0F172A;")
+        actions_title.setStyleSheet("font-size: 14px; font-weight: 600; color: #FAFAFA;")
         actions_layout.addWidget(actions_title)
 
         buttons_row = QHBoxLayout()
-        buttons_row.setSpacing(12)
+        buttons_row.setSpacing(8)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Rechercher un produit...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
-                background: #F8FAFC;
-                border: 1px solid #E2E8F0;
-                border-radius: 10px;
-                padding: 12px 16px;
-                font-size: 13px;
-            }
-            QLineEdit:focus { border: 2px solid #3B82F6; }
-        """)
+        self.search_input.setPlaceholderText("Rechercher...")
+        self.search_input.setStyleSheet("QLineEdit { background: #262626; border: 1px solid #404040; border-radius: 6px; padding: 8px 12px; font-size: 13px; color: #FAFAFA; } QLineEdit:focus { border: 1px solid #FAFAFA; }")
         self.search_input.returnPressed.connect(self._search_products)
         self.search_input.textChanged.connect(self._search_products)
 
         for text, handler, style in [
-            ("+ Produit", self._create_product, "primary"),
-            ("+ Promotion", self._create_promotion, "secondary"),
-            ("+ Utilisateur", self._create_user, "secondary"),
+            ("Produit", self._create_product, "primary"),
+            ("Promotion", self._create_promotion, "secondary"),
+            ("Utilisateur", self._create_user, "secondary"),
             ("Ouvrir Caisse", self._open_pos_screen, "success"),
         ]:
             btn = QPushButton(text)
             if style == "primary":
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background: #2563EB; color: #FFFFFF; border: none;
-                        border-radius: 10px; padding: 12px 20px; font-weight: 600;
-                    }
-                    QPushButton:hover { background: #1D4ED8; }
-                """)
+                btn.setStyleSheet("QPushButton { background: #0070F3; color: #FFFFFF; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 500; font-size: 12px; } QPushButton:hover { background: #0060D0; }")
             elif style == "success":
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background: #10B981; color: #FFFFFF; border: none;
-                        border-radius: 10px; padding: 12px 20px; font-weight: 600;
-                    }
-                    QPushButton:hover { background: #059669; }
-                """)
+                btn.setStyleSheet("QPushButton { background: #22C55E; color: #FFFFFF; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 500; font-size: 12px; } QPushButton:hover { background: #16A34A; }")
             else:
                 btn.setStyleSheet("""
                     QPushButton {
@@ -1300,32 +1189,17 @@ class AdminDashboard(QWidget):
 
     def _create_stat_card(self, parent_layout: QHBoxLayout, title: str, value: str, color: str, icon: str) -> QLabel:
         card = QFrame()
-        card.setMinimumWidth(200)
-        card.setStyleSheet(f"""
-            QFrame {{
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 16px;
-                border-left: 4px solid {color};
-            }}
-        """)
+        card.setStyleSheet(f"QFrame {{ background: #171717; border: 1px solid #262626; border-radius: 8px; border-left: 3px solid {color}; }}")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(20, 20, 20, 20)
-        card_layout.setSpacing(8)
-
-        top_row = QHBoxLayout()
-        icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet("font-size: 24px; background: transparent;")
-        top_row.addWidget(icon_lbl)
-        top_row.addStretch()
-        card_layout.addLayout(top_row)
+        card_layout.setContentsMargins(14, 12, 14, 12)
+        card_layout.setSpacing(4)
 
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;")
+        title_lbl.setStyleSheet("font-size: 11px; font-weight: 500; color: #71717A; text-transform: uppercase; letter-spacing: 0.3px;")
         card_layout.addWidget(title_lbl)
 
         value_lbl = QLabel(value)
-        value_lbl.setStyleSheet(f"font-size: 32px; font-weight: 800; color: {color};")
+        value_lbl.setStyleSheet(f"font-size: 24px; font-weight: 700; color: #FAFAFA;")
         card_layout.addWidget(value_lbl)
 
         parent_layout.addWidget(card)
@@ -1337,8 +1211,8 @@ class AdminDashboard(QWidget):
         table.verticalHeader().setVisible(False)
         table.setStyleSheet("""
             QTableWidget {
-                background: #FFFFFF;
-                border: 1px solid #E2E8F0;
+                background: #171717;
+                border: 1px solid #262626;
                 border-radius: 10px;
                 gridline-color: #F1F5F9;
             }

@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════���������������════════════════════════════════════════════
+        # ═════════════════════════�����������������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode SOMBRE Vercel
@@ -1562,18 +1562,18 @@ class AdminDashboard(QWidget):
 
     def _build_reports_page(self) -> QWidget:
         page = QWidget()
-        page.setStyleSheet("background: #F1F5F9;")
+        page.setStyleSheet("background: #0A0A0A;")
 
         layout = QVBoxLayout(page)
         layout.setContentsMargins(32, 28, 32, 28)
         layout.setSpacing(20)
 
         title = QLabel("Rapports et analyses")
-        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #0F172A;")
+        title.setStyleSheet("font-size: 28px; font-weight: 800; color: #FAFAFA;")
         layout.addWidget(title)
 
         filters = QFrame()
-        filters.setStyleSheet("QFrame { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; }")
+        filters.setStyleSheet("QFrame { background: #171717; border: 1px solid #262626; border-radius: 12px; }")
         filters_layout = QHBoxLayout(filters)
         filters_layout.setContentsMargins(20, 16, 20, 16)
         filters_layout.setSpacing(12)
@@ -1591,23 +1591,31 @@ class AdminDashboard(QWidget):
 
         for w in (self.report_start_date, self.report_end_date, self.report_group_by, self.report_month_filter):
             w.setStyleSheet(
-                "QDateEdit, QComboBox { background: #F8FAFC; border: 1px solid #E2E8F0; "
-                "border-radius: 10px; padding: 10px 12px; }"
+                "QDateEdit, QComboBox { background: #262626; border: 1px solid #404040; color: #FAFAFA; "
+                "border-radius: 8px; padding: 10px 12px; }"
             )
 
         self.report_refresh_btn = QPushButton("Actualiser")
-        self.report_refresh_btn.setStyleSheet("QPushButton { background: #2563EB; color: #FFFFFF; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; } QPushButton:hover { background: #1D4ED8; }")
+        self.report_refresh_btn.setStyleSheet("QPushButton { background: #FAFAFA; color: #0A0A0A; border: none; border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 600; } QPushButton:hover { background: #E5E5E5; }")
         self.report_refresh_btn.clicked.connect(self._refresh_reports_data)
         self.report_group_by.currentIndexChanged.connect(lambda _=None: self._refresh_reports_data())
         self.report_month_filter.currentIndexChanged.connect(self._apply_report_month_filter)
 
-        filters_layout.addWidget(QLabel("Du"))
+        lbl_du = QLabel("Du")
+        lbl_du.setStyleSheet("color: #A1A1AA; font-size: 13px;")
+        lbl_au = QLabel("Au")
+        lbl_au.setStyleSheet("color: #A1A1AA; font-size: 13px;")
+        lbl_mois = QLabel("Filtre mois")
+        lbl_mois.setStyleSheet("color: #A1A1AA; font-size: 13px;")
+        lbl_vue = QLabel("Vue")
+        lbl_vue.setStyleSheet("color: #A1A1AA; font-size: 13px;")
+        filters_layout.addWidget(lbl_du)
         filters_layout.addWidget(self.report_start_date)
-        filters_layout.addWidget(QLabel("Au"))
+        filters_layout.addWidget(lbl_au)
         filters_layout.addWidget(self.report_end_date)
-        filters_layout.addWidget(QLabel("Filtre mois"))
+        filters_layout.addWidget(lbl_mois)
         filters_layout.addWidget(self.report_month_filter)
-        filters_layout.addWidget(QLabel("Vue"))
+        filters_layout.addWidget(lbl_vue)
         filters_layout.addWidget(self.report_group_by)
         filters_layout.addStretch()
         filters_layout.addWidget(self.report_refresh_btn)

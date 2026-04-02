@@ -800,7 +800,7 @@ class AdminDashboard(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ═════════════════════════�����������������════════════════════════════════════════════
+        # ═════════════════════════�������������������════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode CLAIR
         # ══════════════════════════════════════════════════════════════════════
         # SIDEBAR - Navigation gauche - Mode SOMBRE Vercel
@@ -980,48 +980,15 @@ class AdminDashboard(QWidget):
 
         # Quick actions
         refresh_btn = QPushButton("Actualiser")
-        refresh_btn.setStyleSheet("""
-            QPushButton {
-                background: #F1F5F9;
-                color: #475569;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: 600;
-            }
-            QPushButton:hover { background: #E2E8F0; }
-        """)
+        refresh_btn.setStyleSheet("QPushButton { background: #262626; color: #FAFAFA; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 500; } QPushButton:hover { background: #404040; }")
         refresh_btn.clicked.connect(self.refresh_dashboard)
         layout.addWidget(refresh_btn)
 
-        # Notifications bell
-        notif_btn = QPushButton("--")
-        notif_btn.setFixedSize(40, 40)
-        notif_btn.setStyleSheet("""
-            QPushButton {
-                background: #F1F5F9;
-                border: none;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 700;
-                color: #64748B;
-            }
-            QPushButton:hover { background: #E2E8F0; }
-        """)
-        layout.addWidget(notif_btn)
-
         # User avatar in topbar
         user_btn = QLabel(f"{self.user.prenom[0]}{self.user.nom[0]}")
-        user_btn.setFixedSize(40, 40)
+        user_btn.setFixedSize(32, 32)
         user_btn.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        user_btn.setStyleSheet("""
-            background: #3B82F6;
-            color: #FFFFFF;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 700;
-        """)
+        user_btn.setStyleSheet("background: #262626; color: #FAFAFA; border-radius: 16px; font-size: 11px; font-weight: 600;")
         layout.addWidget(user_btn)
 
         return bar
